@@ -70,7 +70,10 @@ npm run package:linux
 ```
 
 The executable is written to `release/Pokeke-linux-x64/Pokeke`. Keep the folder
-together and preserve the executable permissions when copying it.
+together and preserve the executable permissions when copying it. On Linux
+distributions where Chromium's sandbox helper is restricted, run
+`./Pokeke --no-sandbox` or configure the bundled `chrome-sandbox` for your
+system.
 
 The same interface can be served in a browser for development:
 
