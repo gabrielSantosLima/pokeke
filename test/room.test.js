@@ -153,8 +153,8 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
         }
       });
 
-    autoPlay(host, hostId);
-    autoPlay(guest, guestId);
+    const stopHostAutoPlay = autoPlay(host, hostId);
+    const stopGuestAutoPlay = autoPlay(guest, guestId);
 
     const hostStartFrom = host.messages.length;
     const guestStartFrom = guest.messages.length;
@@ -222,7 +222,10 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
     );
     assert.equal(lobbyAfter.lobby.players.length, 2);
 
-    // Rematch with the same room.
+    // Rematch with the same room. Pause both humans so the rejoin test has a
+    // deterministic window before the hand can finish.
+    stopHostAutoPlay();
+    stopGuestAutoPlay();
     const rematchFrom = host.messages.length;
     host.send({ t: 'start' });
     const hostStart2 = await host.waitFor(
@@ -230,6 +233,10 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
       { fromIndex: rematchFrom },
     );
     assert.equal(hostStart2.state.players[0].id, hostId);
+    await host.waitFor(
+      (message) => message.t === 'event' && message.type === 'deal',
+      { fromIndex: rematchFrom },
+    );
 
     // A guest leaving mid-game turns the seat into a bot and warns the table.
     const leftFrom = host.messages.length;
