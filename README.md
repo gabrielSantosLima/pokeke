@@ -12,10 +12,10 @@ Texas Hold'em poker with bots and local-network multiplayer for desktop.
 
 </div>
 
-Pokeke is a No Limit Texas Hold'em game for Windows, built with Electron. Play
-against bots with distinct personalities, host a room on your local network, or
-join a friend's table. Bots fill every empty seat, so a game can start with one
-human or six.
+Pokeke is a No Limit Texas Hold'em game for Windows and Linux, built with
+Electron. Play against bots with distinct personalities, host a room on your
+local network, or join a friend's table. Bots fill every empty seat, so a game
+can start with one human or six.
 
 ## Key features
 
@@ -33,14 +33,18 @@ human or six.
   folds, raises, all-ins, wins and losses.
 - **Adjustable pace and difficulty** — Calm, Normal and Fast table speeds plus
   three bot difficulty levels.
-- **Portable Windows build** — `npm run package` produces
-  `release/Pokeke-win32-x64/Pokeke.exe`; no installer required.
+- **Portable Windows and Linux builds** — `npm run package` produces
+  `release/Pokeke-win32-x64/Pokeke.exe` and `npm run package:linux` produces
+  `release/Pokeke-linux-x64/Pokeke`; no installer required.
+- **Native release builds** — the release workflow publishes a Windows zip and a
+  Linux x64 zip built on Ubuntu.
 
 ## Requirements
 
 - Node.js 22.12 or newer for development and packaging (Electron 45 requires
   it).
-- Windows 10 or newer to run the portable build.
+- Windows 10 or newer to run the Windows portable build.
+- Linux x64 to run the Linux portable build.
 - No external services, accounts or credentials.
 
 ## Getting started
@@ -58,6 +62,15 @@ npm run package
 
 The executable is written to `release/Pokeke-win32-x64/Pokeke.exe`. Keep the
 folder together; the `.exe` needs its adjacent files.
+
+Build the portable Linux app:
+
+```bash
+npm run package:linux
+```
+
+The executable is written to `release/Pokeke-linux-x64/Pokeke`. Keep the folder
+together and preserve the executable permissions when copying it.
 
 The same interface can be served in a browser for development:
 

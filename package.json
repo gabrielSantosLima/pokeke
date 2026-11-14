@@ -14,6 +14,7 @@
     "start": "node server.js",
     "desktop": "electron .",
     "package": "electron-packager . Pokeke --platform=win32 --arch=x64 --out=release --overwrite --prune --icon=build/icon.ico --ignore=\"^/(release|\\.git)\"",
+    "package:linux": "electron-packager . Pokeke --platform=linux --arch=x64 --out=release --overwrite --prune --icon=build/icon.png --ignore=\"^/(release|\\.git)\"",
     "test": "node test/engine.test.js && node test/room.test.js"
   },
   "dependencies": {
