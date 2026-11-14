@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="build/icon.png" alt="Pokeke" width="200" />
+<img src="build/icon.png" alt="Pokeke" width="120" />
 
 # Pokeke
 
