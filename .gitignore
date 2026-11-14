@@ -1,0 +1,12 @@
+node_modules/
+release/
+.DS_Store
+Thumbs.db
+*.log
+
+# Local-only files (harness)
+.env
+.env.*
+PLAN.md
+NOTES.md
+dist/

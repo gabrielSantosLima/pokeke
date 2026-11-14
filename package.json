@@ -1,0 +1,26 @@
+{
+  "name": "pokeke",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Texas Hold'em poker with bots and local-network multiplayer for desktop.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabrielSantosLima/pokeke.git"
+  },
+  "main": "electron/main.mjs",
+  "scripts": {
+    "start": "node server.js",
+    "desktop": "electron .",
+    "package": "electron-packager . Pokeke --platform=win32 --arch=x64 --out=release --overwrite --prune --icon=build/icon.ico --ignore=\"^/(release|\\.git)\"",
+    "test": "node test/engine.test.js && node test/room.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.3.2"
+  }
+}

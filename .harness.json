@@ -1,0 +1,82 @@
+{
+  "harness": {
+    "version": 2,
+    "commit": "00e34971647785495cbc3c3c0de97552544dd7d8"
+  },
+  "project": {
+    "name": "Pokeke",
+    "slug": "pokeke",
+    "description": "Texas Hold'em poker with bots and local-network multiplayer for desktop.",
+    "type": "desktop",
+    "license": "MIT",
+    "owner": "gabrielSantosLima",
+    "repo": "gabrielSantosLima/pokeke"
+  },
+  "git": {
+    "commitAutonomy": "commit-and-push-when-asked",
+    "defaultBranch": "main"
+  },
+  "quality": {
+    "checks": [
+      "npm ci",
+      "npm test"
+    ],
+    "ciDepth": "full",
+    "os": [
+      "windows-latest"
+    ]
+  },
+  "version": {
+    "source": "file",
+    "file": "package.json",
+    "pointer": "version"
+  },
+  "release": {
+    "trigger": "workflow_dispatch",
+    "notesLanguage": "en",
+    "sections": [
+      "features",
+      "fixes",
+      "chores",
+      "other",
+      "known-issues"
+    ],
+    "attachArtifacts": true
+  },
+  "deploy": {
+    "target": "none",
+    "trigger": "manual",
+    "artifact": "release/Pokeke-win32-x64.zip"
+  },
+  "skills": [
+    "commit-and-push",
+    "release-summary",
+    "release-cut",
+    "add-skill",
+    "readme"
+  ],
+  "hygiene": {
+    "pullRequestTemplate": true,
+    "codeowners": true,
+    "codeownersOwner": "@gabrielSantosLima"
+  },
+  "ignore": [
+    "node_modules/",
+    "release/",
+    ".env",
+    ".env.*",
+    "PLAN.md",
+    "NOTES.md",
+    "dist/",
+    "*.log",
+    ".DS_Store",
+    "Thumbs.db"
+  ],
+  "build": {
+    "command": "npm ci && npm run package && Compress-Archive -Path release/Pokeke-win32-x64 -DestinationPath release/Pokeke-win32-x64.zip -Force",
+    "artifacts": [
+      "release/Pokeke-win32-x64.zip"
+    ],
+    "attachToRelease": true
+  }
+}

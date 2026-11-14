@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07130e" />
+    <title>Pokeke · Texas Hold'em</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Sora:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles/main.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b2a1f'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='%23e7c98a'%3E%E2%99%A0%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">♠</div>
+          <div class="brand-text">
+            <h1>POKEKE</h1>
+            <p>Texas Hold'em · No Limit</p>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <div class="meta-pill">
+            <span>Mão</span>
+            <strong id="hand-number">—</strong>
+          </div>
+          <div class="meta-pill">
+            <span>Blinds</span>
+            <strong id="blind-label">10 / 20</strong>
+          </div>
+          <button class="icon-btn speed-btn" id="speed-btn" type="button" title="Ritmo da mesa">
+            <span class="speed-icon">🐢</span><span class="speed-text">Calma</span>
+          </button>
+          <button class="icon-btn" id="sound-btn" type="button" title="Ligar/desligar som" aria-label="Som">
+            🔊
+          </button>
+          <button class="icon-btn" id="help-btn" type="button" title="Como jogar" aria-label="Como jogar">
+            ?
+          </button>
+          <button class="icon-btn" id="restart-btn" type="button" title="Novo jogo" aria-label="Novo jogo">
+            ↻
+          </button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="game-area">
+          <div class="table-shell">
+            <div class="table" id="table">
+              <div class="table-felt">
+                <div class="felt-logo" aria-hidden="true"><span>♠</span> POKEKE</div>
+                <div class="table-center">
+                  <div class="pot" id="pot">
+                    <span class="pot-chips" id="pot-chips"></span>
+                    <span class="pot-label">Pote</span>
+                    <span class="pot-value" id="pot-value">0</span>
+                  </div>
+                  <div class="board" id="board"></div>
+                  <div class="street" id="street-label">Aguardando</div>
+                </div>
+                <div class="seats" id="seats"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar" id="action-bar">
+            <div class="turn-row">
+              <div class="reaction-feed" id="reaction-feed" aria-live="polite"></div>
+              <div class="turn-status" id="turn-status">
+                <span class="turn-dot"></span>
+                <span id="turn-info">Aguardando o início…</span>
+              </div>
+              <div class="turn-extras">
+                <div class="hand-hint" id="hand-hint"></div>
+                <div class="reaction-box" id="reaction-box">
+                  <button class="reaction-btn" id="reaction-btn" type="button" title="Enviar reação" aria-label="Enviar reação">
+                    😀
+                  </button>
+                  <div class="reaction-popover hidden" id="reaction-popover" aria-label="Reações"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-row" id="action-row">
+              <div class="basic-actions">
+                <button class="btn btn-ghost" id="btn-fold" type="button">
+                  Desistir <kbd>F</kbd>
+                </button>
+                <button class="btn btn-check" id="btn-check" type="button">
+                  Mesa <kbd>M</kbd>
+                </button>
+                <button class="btn btn-call" id="btn-call" type="button">
+                  Pagar <span class="btn-amount" id="call-amount"></span>
+                  <kbd>C</kbd>
+                </button>
+              </div>
+
+              <div class="raise-panel" id="raise-panel">
+                <div class="raise-top">
+                  <span class="raise-label" id="raise-label">Aposta</span>
+                  <output id="raise-value">0</output>
+                </div>
+                <input type="range" id="raise-slider" min="0" max="100" step="1" value="0" />
+                <div class="quick-row">
+                  <button class="quick" type="button" data-frac="0.5">½ pote</button>
+                  <button class="quick" type="button" data-frac="0.75">¾ pote</button>
+                  <button class="quick" type="button" data-frac="1">Pote</button>
+                  <button class="quick" type="button" data-allin="1">All-in</button>
+                </div>
+              </div>
+
+              <button class="btn btn-raise" id="btn-raise" type="button">
+                Apostar <kbd>R</kbd>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <div class="sidebar-head">
+            <h2>Mesa</h2>
+            <span class="live-dot" id="live-dot"></span>
+          </div>
+          <div class="log" id="log"></div>
+          <div class="sidebar-foot">POKEKE · jogue com responsabilidade</div>
+        </aside>
+      </main>
+    </div>
+
+    <div class="overlay" id="start-overlay">
+      <div class="modal">
+        <div class="modal-glow" aria-hidden="true"></div>
+        <div class="modal-brand"><span>♠</span> POKEKE</div>
+        <h2>Texas Hold'em</h2>
+        <p class="modal-sub">
+          Jogue contra bots ou reúna a galera na mesma rede local. Quem faltar na mesa vira bot.
+        </p>
+
+        <div class="mode-tabs" id="mode-tabs">
+          <button type="button" data-mode="solo" class="selected">Solo</button>
+          <button type="button" data-mode="host">Criar sala</button>
+          <button type="button" data-mode="join">Entrar em sala</button>
+        </div>
+
+        <div class="mode-panel" data-panel="solo">
+          <div class="settings">
+            <div class="setting">
+              <div class="setting-label">
+                <span>Adversários</span>
+                <small>bots na mesa</small>
+              </div>
+              <div class="segmented" data-setting="bots">
+                <button type="button" data-value="2">2</button>
+                <button type="button" data-value="3" class="selected">3</button>
+                <button type="button" data-value="4">4</button>
+                <button type="button" data-value="5">5</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Fichas iniciais</span>
+                <small>seu stack</small>
+              </div>
+              <div class="segmented" data-setting="stack">
+                <button type="button" data-value="1000">1.000</button>
+                <button type="button" data-value="2000" class="selected">2.000</button>
+                <button type="button" data-value="5000">5.000</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Blinds</span>
+                <small>small / big</small>
+              </div>
+              <div class="segmented" data-setting="blinds">
+                <button type="button" data-value="5:10">5 / 10</button>
+                <button type="button" data-value="10:20" class="selected">10 / 20</button>
+                <button type="button" data-value="25:50">25 / 50</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Dificuldade</span>
+                <small>dos bots</small>
+              </div>
+              <div class="segmented" data-setting="difficulty">
+                <button type="button" data-value="easy">Fácil</button>
+                <button type="button" data-value="normal" class="selected">Médio</button>
+                <button type="button" data-value="hard">Difícil</button>
+              </div>
+            </div>
+
+            <div class="setting setting--wide">
+              <div class="setting-label">
+                <span>Ritmo da mesa</span>
+                <small>tempo entre as jogadas</small>
+              </div>
+              <div class="segmented" data-setting="speed">
+                <button type="button" data-value="calm" class="selected">🐢 Calma</button>
+                <button type="button" data-value="normal">⏱ Normal</button>
+                <button type="button" data-value="fast">⚡ Rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-play" id="start-btn" type="button">Jogar agora</button>
+          <p class="modal-note">Sem cadastro. Sem dinheiro real.</p>
+        </div>
+
+        <div class="mode-panel hidden" data-panel="host">
+          <div class="settings">
+            <div class="setting setting--wide">
+              <div class="setting-label">
+                <span>Seu nome</span>
+                <small>aparece na mesa</small>
+              </div>
+              <input class="text-input" id="host-name" maxlength="18" placeholder="Anfitrião" autocomplete="off" />
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Lugares na mesa</span>
+                <small>bots completam</small>
+              </div>
+              <div class="segmented" data-setting="seats">
+                <button type="button" data-value="2">2</button>
+                <button type="button" data-value="3">3</button>
+                <button type="button" data-value="4" class="selected">4</button>
+                <button type="button" data-value="5">5</button>
+                <button type="button" data-value="6">6</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Fichas iniciais</span>
+                <small>por jogador</small>
+              </div>
+              <div class="segmented" data-setting="mpStack">
+                <button type="button" data-value="1000">1.000</button>
+                <button type="button" data-value="2000" class="selected">2.000</button>
+                <button type="button" data-value="5000">5.000</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Blinds</span>
+                <small>small / big</small>
+              </div>
+              <div class="segmented" data-setting="mpBlinds">
+                <button type="button" data-value="5:10">5 / 10</button>
+                <button type="button" data-value="10:20" class="selected">10 / 20</button>
+                <button type="button" data-value="25:50">25 / 50</button>
+              </div>
+            </div>
+
+            <div class="setting">
+              <div class="setting-label">
+                <span>Dificuldade</span>
+                <small>dos bots</small>
+              </div>
+              <div class="segmented" data-setting="mpDifficulty">
+                <button type="button" data-value="easy">Fácil</button>
+                <button type="button" data-value="normal" class="selected">Médio</button>
+                <button type="button" data-value="hard">Difícil</button>
+              </div>
+            </div>
+
+            <div class="setting setting--wide">
+              <div class="setting-label">
+                <span>Ritmo da mesa</span>
+                <small>tempo entre as jogadas</small>
+              </div>
+              <div class="segmented" data-setting="mpSpeed">
+                <button type="button" data-value="calm" class="selected">🐢 Calma</button>
+                <button type="button" data-value="normal">⏱ Normal</button>
+                <button type="button" data-value="fast">⚡ Rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-play" id="host-btn" type="button">Criar sala</button>
+          <p class="modal-note">A sala fica visível para outros Pokekes na mesma rede local.</p>
+        </div>
+
+        <div class="mode-panel hidden" data-panel="join">
+          <div class="settings">
+            <div class="setting setting--wide">
+              <div class="setting-label">
+                <span>Seu nome</span>
+                <small>na mesa</small>
+              </div>
+              <input class="text-input" id="join-name" maxlength="18" placeholder="Jogador" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="scan-head">
+            <span>Salas na rede local</span>
+            <button class="quick scan-btn" id="scan-btn" type="button">Procurar salas</button>
+          </div>
+          <div class="room-list" id="room-list">
+            <div class="room-empty">Nenhuma sala encontrada ainda.</div>
+          </div>
+
+          <div class="manual-join">
+            <input class="text-input" id="manual-address" placeholder="IP:porta  (ex.: 192.168.0.10:52133)" autocomplete="off" />
+            <button class="btn btn-ghost" id="manual-join-btn" type="button">Entrar</button>
+          </div>
+          <p class="modal-note" id="join-note">A descoberta automática funciona no app desktop. No navegador, informe o IP da sala.</p>
+        </div>
+
+        <p class="modal-note modal-help">
+          Primeira vez aqui?
+          <button class="link-btn" id="tutorial-link" type="button">Abrir o tutorial</button>
+        </p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="lobby-overlay">
+      <div class="modal modal-lobby">
+        <div class="modal-brand"><span>♠</span> POKEKE · SALA</div>
+        <h2 id="lobby-title">Sala</h2>
+        <p class="modal-sub" id="lobby-sub">Aguardando jogadores…</p>
+        <div class="lobby-address" id="lobby-address"></div>
+        <div class="lobby-players" id="lobby-players"></div>
+        <div class="lobby-actions">
+          <button class="btn btn-primary btn-play" id="lobby-start" type="button">Iniciar partida</button>
+          <button class="btn btn-ghost btn-play" id="lobby-leave" type="button">Sair da sala</button>
+        </div>
+        <p class="modal-note" id="lobby-note">Os bots completam os lugares vazios.</p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="reconnect-overlay">
+      <div class="modal modal-reconnect">
+        <div class="modal-brand"><span>♠</span> POKEKE</div>
+        <h2>Reconectando…</h2>
+        <p class="modal-sub" id="reconnect-text">Sua vaga na mesa está reservada.</p>
+        <div class="reconnect-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <button class="btn btn-ghost btn-play" id="reconnect-cancel" type="button">Sair da sala</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="tutorial-overlay">
+      <div class="modal modal-tutorial">
+        <div class="tutorial-head">
+          <span class="modal-brand"><span>♠</span> POKEKE · TUTORIAL</span>
+          <button class="tutorial-skip" id="tutorial-skip" type="button">Pular</button>
+        </div>
+        <div class="tutorial-visual" id="tutorial-visual"></div>
+        <h2 id="tutorial-title"></h2>
+        <p class="modal-sub" id="tutorial-text"></p>
+        <div class="tutorial-foot">
+          <div class="tutorial-dots" id="tutorial-dots"></div>
+          <div class="tutorial-actions">
+            <button class="btn btn-ghost" id="tutorial-back" type="button">Voltar</button>
+            <button class="btn btn-primary" id="tutorial-next" type="button">Próximo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="end-overlay">
+      <div class="modal modal-end">
+        <div class="modal-brand" id="end-brand"><span>♠</span> POKEKE</div>
+        <h2 id="end-title">Fim de jogo</h2>
+        <p class="modal-sub" id="end-text"></p>
+        <div class="end-stats" id="end-stats"></div>
+        <button class="btn btn-primary btn-play" id="again-btn" type="button">Jogar novamente</button>
+        <button class="btn btn-ghost btn-play" id="end-menu-btn" type="button">Mudar configurações</button>
+        <p class="modal-note" id="end-note"></p>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
