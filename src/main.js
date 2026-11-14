@@ -492,7 +492,7 @@ document.getElementById('manual-join-btn').addEventListener('click', () => {
   try {
     const normalized = /^ws:\/\//i.test(raw) ? raw : `ws://${raw}`;
     const parsed = new URL(normalized);
-    if (!parsed.port) throw new Error('porta ausente');
+    if (!parsed.port) throw new Error('missing port');
     url = `ws://${parsed.hostname}:${parsed.port}/ws`;
   } catch {
     showToast('Endereço inválido. Use IP:porta.');

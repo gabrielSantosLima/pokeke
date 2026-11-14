@@ -5,7 +5,7 @@ import { REACTION_COOLDOWN_MS, pickBotReaction } from './reactions.js';
 
 export class GameAborted extends Error {
   constructor() {
-    super('Partida interrompida');
+    super('Game aborted');
     this.name = 'GameAborted';
   }
 }

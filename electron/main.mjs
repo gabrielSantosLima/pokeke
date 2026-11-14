@@ -78,7 +78,7 @@ app.setName('Pokeke');
 
 app.whenReady().then(() => {
   createWindow().catch((error) => {
-    console.error('[pokeke] falha ao iniciar:', error);
+    console.error('[pokeke] failed to start:', error);
     app.quit();
   });
 });

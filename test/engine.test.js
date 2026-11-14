@@ -25,7 +25,7 @@ async function test(name, fn) {
 
 // ---------------------------------------------------------------- evaluator
 
-await test('reconhece categorias básicas', () => {
+await test('recognizes basic hand categories', () => {
   assert.equal(evaluate5(hand('As', 'Kd', 'Qh', 'Jc', 'Ts')).cat, 4);
   assert.equal(evaluate5(hand('As', 'Ad', 'Qh', 'Jc', 'Ts')).cat, 1);
   assert.equal(evaluate5(hand('As', 'Ad', 'Qh', 'Qc', 'Ts')).cat, 2);
@@ -37,14 +37,14 @@ await test('reconhece categorias básicas', () => {
   assert.equal(evaluate5(hand('9s', '8s', '7s', '6s', '5s')).cat, 8);
 });
 
-await test('roda a sequência baixa (A-2-3-4-5)', () => {
+await test('evaluates the wheel straight (A-2-3-4-5)', () => {
   const wheel = evaluate5(hand('As', '2d', '3h', '4c', '5s'));
   assert.equal(wheel.cat, 4);
   assert.equal(wheel.kickers[0], 5);
   assert.ok(wheel.value < evaluate5(hand('2s', '3d', '4h', '5c', '6s')).value);
 });
 
-await test('escolhe a melhor mão entre 7 cartas', () => {
+await test('picks the best hand from seven cards', () => {
   const result = evaluate(hand('As', 'Ks', 'Qs', 'Js', 'Ts', '2d', '2c'));
   assert.equal(result.name, 'Straight Flush');
   assert.equal(result.description, 'Royal Flush');
@@ -57,7 +57,7 @@ await test('escolhe a melhor mão entre 7 cartas', () => {
   assert.equal(quads.name, 'Quadra');
 });
 
-await test('evaluateValue concorda com evaluate em mãos aleatórias', () => {
+await test('evaluateValue agrees with evaluate on random hands', () => {
   const deck = createDeck();
   for (let i = 0; i < 500; i += 1) {
     for (let j = deck.length - 1; j > 0; j -= 1) {
@@ -73,7 +73,7 @@ await test('evaluateValue concorda com evaluate em mãos aleatórias', () => {
 
 // -------------------------------------------------------------- side pots
 
-await test('distribui side pots corretamente', () => {
+await test('distributes side pots correctly', () => {
   const game = new PokerGame({
     players: [
       { id: 'a', name: 'A', avatar: '🦊', stack: 0 },
@@ -99,19 +99,19 @@ await test('distribui side pots corretamente', () => {
   const results = game.awardPot([a, b, c], true);
 
   assert.equal(results.totalPot, 700);
-  assert.equal(a.won, 300, 'A leva o pote principal');
-  assert.equal(b.won, 400, 'B leva o side pot');
+  assert.equal(a.won, 300, 'A wins the main pot');
+  assert.equal(b.won, 400, 'B wins the side pot');
   assert.equal(c.won, 0);
   assert.equal(a.stack + b.stack + c.stack, 700);
 });
 
 // -------------------------------------------------------------- reactions
 
-await test('reações de bots e do jogador', () => {
+await test('bot and player reactions', () => {
   const events = [];
   const game = new PokerGame({
     players: [
-      { id: 'h', name: 'Humano', avatar: '🧑', isHuman: true, stack: 1000 },
+      { id: 'h', name: 'Human', avatar: '🧑', isHuman: true, stack: 1000 },
       { id: 'b', name: 'Bot', avatar: '🦊', stack: 1000 },
     ],
     smallBlind: 5,
@@ -140,12 +140,12 @@ await test('reações de bots e do jogador', () => {
 
 // --------------------------------------------------------------- equity
 
-await test('equidade de AA contra 3 oponentes fica na faixa esperada', () => {
+await test('aces equity against three opponents is in the expected range', () => {
   const equity = estimateEquity(hand('As', 'Ad'), [], 3, 600);
   assert.ok(equity > 0.5 && equity < 0.75, `equity=${equity}`);
 });
 
-await test('equidade de 7-2 contra 1 oponente é baixa', () => {
+await test('seven-two equity against one opponent is low', () => {
   const equity = estimateEquity(hand('7c', '2d'), [], 1, 600);
   assert.ok(equity < 0.42, `equity=${equity}`);
 });
@@ -174,7 +174,7 @@ async function runSimulation({ hands = 400, withHuman = false, label }) {
     if (withHuman) {
       seats.splice(2, 0, {
         id: 'human',
-        name: 'Você',
+        name: 'You',
         avatar: '🧑',
         isHuman: true,
         stack: 2000,
@@ -222,7 +222,7 @@ async function runSimulation({ hands = 400, withHuman = false, label }) {
     game.applyAction = (player, action) => {
       if (action && (action.type === 'raise' || action.type === 'allin')) {
         const options = game.getOptions(player);
-        assert.ok(options.canRaise, 'raise sem direito de subir');
+        assert.ok(options.canRaise, 'raise without the right to raise');
         if (action.type === 'raise') {
           assert.ok(
             action.amount >= options.minRaiseTo && action.amount <= options.maxRaiseTo,
@@ -237,10 +237,10 @@ async function runSimulation({ hands = 400, withHuman = false, label }) {
       const result = await game.playHand();
       totalHands += 1;
       const stacks = game.players.reduce((sum, p) => sum + p.stack, 0);
-      assert.equal(stacks, totalStart, 'fichas sumiram ou apareceram');
+      assert.equal(stacks, totalStart, 'chips disappeared or appeared');
       assert.ok(
         game.players.every((p) => p.stack >= 0 && Number.isFinite(p.stack)),
-        'stack inválido',
+        'invalid stack',
       );
       if (result.gameOver) break;
     }
@@ -248,24 +248,24 @@ async function runSimulation({ hands = 400, withHuman = false, label }) {
 
   const elapsed = Date.now() - started;
   console.log(
-    `     ${label}: ${totalHands} mãos, ${games} partidas, ${showdowns} showdowns, ` +
-      `${folds} folds, ${raises} raises, ${elapsed}ms (${(elapsed / totalHands).toFixed(1)}ms/mão)`,
+    `     ${label}: ${totalHands} hands, ${games} games, ${showdowns} showdowns, ` +
+      `${folds} folds, ${raises} raises, ${elapsed}ms (${(elapsed / totalHands).toFixed(1)}ms/hand)`,
   );
   return { totalHands, showdowns, folds, raises };
 }
 
-await test('simulação completa sem humano', async () => {
-  const stats = await runSimulation({ hands: 500, label: 'sem humano' });
-  assert.ok(stats.showdowns > 30, 'poucos showdowns');
-  assert.ok(stats.folds > 100, 'poucos folds');
+await test('full simulation without a human', async () => {
+  const stats = await runSimulation({ hands: 500, label: 'without human' });
+  assert.ok(stats.showdowns > 30, 'too few showdowns');
+  assert.ok(stats.folds > 100, 'too few folds');
 });
 
-await test('simulação completa com humano automatizado', async () => {
-  const stats = await runSimulation({ hands: 300, withHuman: true, label: 'com humano' });
+await test('full simulation with an automated human', async () => {
+  const stats = await runSimulation({ hands: 300, withHuman: true, label: 'with human' });
   assert.ok(stats.showdowns > 15);
 });
 
-await test('desempenho de decisão dos bots', () => {
+await test('bot decision performance', () => {
   const deck = createDeck();
   const hole = deck.slice(0, 2);
   const board = deck.slice(2, 5);
@@ -275,11 +275,11 @@ await test('desempenho de decisão dos bots', () => {
     equity += estimateEquity(hole, board, 3, 160);
   }
   const perDecision = (Date.now() - started) / 60;
-  console.log(`     equity média=${(equity / 60).toFixed(3)} · ${perDecision.toFixed(1)}ms por decisão`);
-  assert.ok(perDecision < 120, `decisão muito lenta: ${perDecision}ms`);
+  console.log(`     average equity=${(equity / 60).toFixed(3)} · ${perDecision.toFixed(1)}ms per decision`);
+  assert.ok(perDecision < 120, `decision too slow: ${perDecision}ms`);
 });
 
-await test('bots tomam decisões válidas em contextos aleatórios', () => {
+await test('bots make legal decisions in random contexts', () => {
   const deck = createDeck();
   for (let i = 0; i < 300; i += 1) {
     const cards = deck.slice(0, 9);
@@ -310,9 +310,9 @@ await test('bots tomam decisões válidas em contextos aleatórios', () => {
       assert.ok(action.amount >= options.minRaiseTo && action.amount <= options.maxRaiseTo);
     }
     if (options.toCall === 0 && action.type === 'fold') {
-      assert.fail('bot desistiu sem aposta para pagar');
+      assert.fail('bot folded with no bet to call');
     }
   }
 });
 
-console.log('\nTodos os testes passaram.');
+console.log('\nAll tests passed.');

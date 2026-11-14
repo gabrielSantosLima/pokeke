@@ -55,7 +55,7 @@ class TestClient {
       waiter.timer = setTimeout(() => {
         const index = this.waiters.indexOf(waiter);
         if (index >= 0) this.waiters.splice(index, 1);
-        reject(new Error(`timeout esperando mensagem (${this.messages.length} recebidas)`));
+        reject(new Error(`timed out waiting for a message (${this.messages.length} received)`));
       }, timeout);
       this.waiters.push(waiter);
     });
@@ -81,7 +81,7 @@ async function test(name, fn) {
   }
 }
 
-await test('sala local: descoberta, entrada, partida e rematch', async () => {
+await test('local room: discovery, join, game and rematch', async () => {
   const server = await createStaticServer({ root, port: 0 });
   const manager = new RoomManager({
     speeds: {
@@ -109,9 +109,9 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
     const rooms = await discoverRooms({ timeoutMs: 900 });
     assert.ok(
       rooms.some((room) => room.roomId === info.roomId),
-      'a sala não apareceu na descoberta local',
+      'the room did not appear in local discovery',
     );
-    console.log(`     sala descoberta em ${rooms[0].address}:${rooms[0].port}`);
+    console.log(`     room discovered at ${rooms[0].address}:${rooms[0].port}`);
 
     const url = `ws://127.0.0.1:${info.port}/ws`;
     host = new TestClient(url);
@@ -119,7 +119,7 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
     await Promise.all([host.open(), guest.open()]);
 
     host.send({ t: 'join', name: 'Host', adminToken: info.adminToken });
-    guest.send({ t: 'join', name: 'Convidado' });
+    guest.send({ t: 'join', name: 'Guest' });
 
     const hostJoined = await host.waitFor((message) => message.t === 'joined');
     const guestJoined = await guest.waitFor((message) => message.t === 'joined');
@@ -169,8 +169,8 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
       { fromIndex: guestStartFrom },
     );
     assert.ok(hostStart.state && guestStart.state);
-    assert.equal(hostStart.state.players[0].id, hostId, 'o anfitrião deve sentar embaixo');
-    assert.equal(guestStart.state.players[0].id, guestId, 'o convidado deve sentar embaixo');
+    assert.equal(hostStart.state.players[0].id, hostId, 'the host should be seated at the bottom');
+    assert.equal(guestStart.state.players[0].id, guestId, 'the guest should be seated at the bottom');
     assert.ok(hostStart.state.players.find((player) => player.id === hostId).isMe);
     assert.ok(guestStart.state.players.find((player) => player.id === guestId).isMe);
 
@@ -190,8 +190,8 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
 
     assert.equal(hostMe.hole.length, 2);
     assert.equal(guestMe.hole.length, 2);
-    assert.equal(guestInHostView.hole.filter(Boolean).length, 0, 'cartas do convidado vazaram');
-    assert.equal(hostInGuestView.hole.filter(Boolean).length, 0, 'cartas do anfitrião vazaram');
+    assert.equal(guestInHostView.hole.filter(Boolean).length, 0, 'guest cards leaked');
+    assert.equal(hostInGuestView.hole.filter(Boolean).length, 0, 'host cards leaked');
     assert.equal(hostInGuestView.hole.length, 2);
 
     const reactionFrom = host.messages.length;
@@ -214,7 +214,7 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
 
     assert.ok(hostOver.summary && guestOver.summary);
     const finalStacks = hostOver.state.players.reduce((sum, player) => sum + player.stack, 0);
-    assert.equal(finalStacks, 4 * 100, 'fichas sumiram no fim da partida');
+    assert.equal(finalStacks, 4 * 100, 'chips were lost at the end of the game');
 
     const lobbyAfter = await host.waitFor(
       (message) => message.t === 'lobby' && message.lobby.status === 'lobby',
@@ -248,7 +248,7 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
     assert.equal(left.playerId, guestId);
     assert.ok(
       left.state.players.some((player) => player.id === guestId && player.isHuman === false),
-      'a vaga não virou bot depois da saída',
+      'the seat did not become a bot after the disconnect',
     );
 
     // The reserved seat can be reclaimed with the rejoin token.
@@ -259,7 +259,7 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
       t: 'rejoin',
       playerId: guestId,
       token: guestJoined.reconnectToken,
-      name: 'Convidado',
+      name: 'Guest',
     });
     const rejoined = await rejoinClient.waitFor((message) => message.t === 'rejoined', {
       fromIndex: rejoinedFrom,
@@ -267,7 +267,7 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
     assert.equal(rejoined.playerId, guestId);
     assert.equal(rejoined.status, 'playing');
     assert.equal(rejoined.admin, false);
-    assert.equal(rejoined.state.players[0].id, guestId, 'reconectado deve sentar embaixo');
+    assert.equal(rejoined.state.players[0].id, guestId, 'the reconnected player should be seated at the bottom');
     assert.equal(rejoined.state.players[0].hole.filter(Boolean).length, 2);
     assert.equal(rejoined.state.players[0].isMe, true);
 
@@ -289,4 +289,4 @@ await test('sala local: descoberta, entrada, partida e rematch', async () => {
   }
 });
 
-console.log('\nTestes de rede passaram.');
+console.log('\nNetwork tests passed.');

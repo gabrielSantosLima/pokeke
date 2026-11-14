@@ -552,7 +552,7 @@ export class RoomManager {
       }
     } catch (error) {
       if (!(error instanceof GameAborted)) {
-        console.error('[pokeke] erro na partida:', error);
+        console.error('[pokeke] game error:', error);
       }
     } finally {
       room.running = false;
@@ -608,7 +608,7 @@ export class RoomManager {
     try {
       const socket = dgram.createSocket({ type: 'udp4' });
       socket.on('error', (error) => {
-        console.warn('[pokeke] descoberta local indisponível:', error.message);
+        console.warn('[pokeke] local discovery unavailable:', error.message);
         try {
           socket.close();
         } catch {
@@ -646,7 +646,7 @@ export class RoomManager {
       });
       this.udp = socket;
     } catch (error) {
-      console.warn('[pokeke] não foi possível anunciar a sala:', error.message);
+      console.warn('[pokeke] could not advertise the room:', error.message);
     }
   }
 

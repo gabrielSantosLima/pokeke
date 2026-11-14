@@ -279,7 +279,7 @@ function describe(cat, kickers) {
  * Returns { cat, kickers, value, cards, name, description }.
  */
 export function evaluate(cards) {
-  if (cards.length < 5) throw new Error('É preciso pelo menos 5 cartas para avaliar a mão');
+  if (cards.length < 5) throw new Error('At least five cards are required to evaluate a hand');
   const combos = COMBOS[cards.length];
   let best = null;
   for (const combo of combos) {
