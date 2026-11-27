@@ -1,7 +1,8 @@
-import { SUITS, rankSymbol, formatChips } from './cards.js';
-import { evaluate } from './evaluator.js';
+import { SUITS, rankSymbol, formatChips, isJoker } from './cards.js';
+import { evaluateBest } from './evaluator.js';
 import { sfx } from './audio.js';
-import { PLAYER_REACTIONS } from './reactions.js';
+import { REACTION_GROUPS } from './reactions.js';
+import { POWER_BY_ID } from './variants.js';
 
 const STREET_LABELS = {
   preflop: 'Pré-flop',
@@ -34,6 +35,13 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function cardMarkup(card, index, noAnim = false) {
   const suit = SUITS[card.s];
+  if (isJoker(card)) {
+    return `<div class="card card--joker${noAnim ? ' no-anim' : ''}" style="--i:${index}">
+      <span class="card__rank">★</span>
+      <span class="card__suit">${suit.symbol}</span>
+      <span class="card__joker">CURINGA</span>
+    </div>`;
+  }
   return `<div class="card${suit.color === 'red' ? ' card--red' : ''}${noAnim ? ' no-anim' : ''}" style="--i:${index}">
     <span class="card__rank">${rankSymbol(card.r)}</span>
     <span class="card__suit">${suit.symbol}</span>
@@ -103,6 +111,11 @@ export class PokerUI {
     this.lastPot = 0;
     this.raiseKey = '';
     this.lastReactionSent = 0;
+    this.lastDraftSig = '';
+    this.reactionGroup = 'emojis';
+    this.onPower = null;
+    this.onMarket = null;
+    this.onDraft = null;
 
     this.el = {
       seats: doc.getElementById('seats'),
@@ -130,11 +143,15 @@ export class PokerUI {
       reactionBtn: doc.getElementById('reaction-btn'),
       reactionPopover: doc.getElementById('reaction-popover'),
       reactionFeed: doc.getElementById('reaction-feed'),
+      powerTray: doc.getElementById('power-tray'),
+      powerIntel: doc.getElementById('power-intel'),
+      marketBtn: doc.getElementById('market-btn'),
     };
 
     this.quickButtons = Array.from(doc.querySelectorAll('.quick'));
     this.buildReactionPicker();
     this.bindInputs();
+    this.bindVariantControls();
 
     window.addEventListener('resize', () => {
       if (!this.state) return;
@@ -189,12 +206,113 @@ export class PokerUI {
     this.el.callAmount.textContent = '';
     this.el.raisePanel.classList.add('is-hidden');
     this.el.btnRaise.textContent = 'Apostar';
+    this.lastDraftSig = '';
+    if (this.el.powerTray) {
+      this.el.powerTray.innerHTML = '';
+      this.el.powerTray.hidden = true;
+    }
+    if (this.el.powerIntel) {
+      this.el.powerIntel.innerHTML = '';
+      this.el.powerIntel.hidden = true;
+    }
+    if (this.el.marketBtn) this.el.marketBtn.hidden = true;
+    if (this.onDraft) this.onDraft(null);
+  }
+
+  bindVariantControls() {
+    if (this.el.powerTray) {
+      this.el.powerTray.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-power]');
+        if (!button || button.disabled) return;
+        const power = POWER_BY_ID.get(button.dataset.power);
+        if (power && this.onPower) this.onPower(power);
+      });
+    }
+    if (this.el.marketBtn) {
+      this.el.marketBtn.addEventListener('click', () => {
+        if (this.onMarket) this.onMarket();
+      });
+    }
+  }
+
+  syncVariantControls(state) {
+    const arcana = state.arcana;
+    const me = state.players.find((player) => player.isMe);
+    const powers =
+      arcana && Array.isArray(arcana.powers) && !(me && me.folded) && state.street !== 'hand-end'
+        ? arcana.powers
+        : [];
+    if (this.el.powerTray) {
+      this.el.powerTray.hidden = powers.length === 0;
+      this.el.powerTray.innerHTML = powers
+        .map((power) => {
+          const info = POWER_BY_ID.get(power.id) || power;
+          return `<button class="power-chip" type="button" data-power="${power.id}" title="${info.description}">
+            <span class="power-chip__icon">${info.icon}</span>
+            <span class="power-chip__name">${info.name}</span>
+          </button>`;
+        })
+        .join('');
+    }
+
+    if (this.el.powerIntel) {
+      const intel = (arcana && arcana.intel) || (state.market && state.market.intel) || null;
+      const lines = [];
+      if (intel && intel.vision) {
+        lines.push(`👁️ Próxima carta: ${this.cardText(intel.vision)}`);
+      }
+      if (intel && Array.isArray(intel.deckPeek) && intel.deckPeek.length) {
+        lines.push(`🔮 Topo do baralho: ${intel.deckPeek.map((card) => this.cardText(card)).join(' · ')}`);
+      }
+      if (intel && intel.mirror) {
+        lines.push(`🪞 ${intel.mirror.name}: ${this.cardText(intel.mirror.card)}`);
+      }
+      if (intel && intel.read) {
+        lines.push(`🧠 ${intel.read.name}: ${intel.read.handName}`);
+      }
+      if (arcana && arcana.ghost) lines.push('👻 Fantasma ativo');
+      if (arcana && arcana.tie) lines.push('🤝 Empate armado');
+      this.el.powerIntel.hidden = lines.length === 0;
+      this.el.powerIntel.innerHTML = lines.map((line) => `<span>${line}</span>`).join('');
+    }
+
+    if (this.el.marketBtn) {
+      const market = state.market;
+      this.el.marketBtn.hidden = !market || state.street === 'hand-end';
+      if (market) {
+        this.el.marketBtn.disabled = !market.canBuy;
+        this.el.marketBtn.textContent = market.bought ? '🛒 Compra feita' : '🛒 Mercado';
+        this.el.marketBtn.title = market.canBuy
+          ? 'Abrir o mercado desta mão'
+          : market.bought
+            ? 'Você já comprou nesta mão'
+            : 'O mercado abre na sua vez';
+      }
+    }
+
+    if (this.onDraft) {
+      const draft = arcana && arcana.draft ? arcana.draft : null;
+      const signature = draft
+        ? `${state.handNumber}:${draft.offer.map((card) => card.id).join(',')}:${draft.picks.join(',')}`
+        : '';
+      if (signature !== this.lastDraftSig) {
+        this.lastDraftSig = signature;
+        this.onDraft(draft);
+      }
+    }
+  }
+
+  cardText(card) {
+    if (!card) return '—';
+    if (isJoker(card)) return `★${SUITS[card.s].symbol}`;
+    return `${rankSymbol(card.r)}${SUITS[card.s].symbol}`;
   }
 
   handleEvent(event) {
     if (!event || !event.state) return;
     this.state = event.state;
     this.render(event.state);
+    this.syncVariantControls(event.state);
     if (event.type === 'reaction') this.showReaction(event.playerId, event.text);
     if (event.type === 'hand-start') this.clearReactions();
     this.playSound(event);
@@ -204,36 +322,71 @@ export class PokerUI {
 
   buildReactionPicker() {
     const popover = this.el.reactionPopover;
-    popover.innerHTML = '';
-    for (const reaction of PLAYER_REACTIONS) {
-      const button = this.doc.createElement('button');
-      button.type = 'button';
-      button.textContent = reaction;
-      button.dataset.reaction = reaction;
-      if (reaction.length > 2) button.classList.add('is-phrase');
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        if (this.sendReaction(reaction)) this.setReactionPicker(false);
-      });
-      popover.appendChild(button);
+    popover.innerHTML = `
+      <div class="reaction-head">
+        <span class="reaction-title">Reações</span>
+        <button class="reaction-close" type="button" title="Fechar reações" aria-label="Fechar reações">✕</button>
+      </div>
+      <div class="reaction-tabs" role="tablist">
+        ${REACTION_GROUPS.map(
+          (group) =>
+            `<button type="button" role="tab" data-group="${group.id}" class="${group.id === this.reactionGroup ? 'selected' : ''}">${group.label}</button>`,
+        ).join('')}
+      </div>
+      <div class="reaction-panels"></div>
+    `;
+
+    const panels = popover.querySelector('.reaction-panels');
+    for (const group of REACTION_GROUPS) {
+      const panel = this.doc.createElement('div');
+      panel.className = 'reaction-panel';
+      panel.dataset.panel = group.id;
+      panel.hidden = group.id !== this.reactionGroup;
+      for (const reaction of group.items) {
+        const button = this.doc.createElement('button');
+        button.type = 'button';
+        button.className = 'reaction-item';
+        button.textContent = reaction;
+        button.dataset.reaction = reaction;
+        if (group.id === 'phrases') button.classList.add('is-phrase');
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (this.sendReaction(reaction)) this.setReactionPicker(false);
+        });
+        panel.appendChild(button);
+      }
+      panels.appendChild(panel);
     }
 
-    const close = this.doc.createElement('button');
-    close.type = 'button';
-    close.className = 'reaction-close';
-    close.textContent = '✕';
-    close.title = 'Fechar reações';
-    close.setAttribute('aria-label', 'Fechar reações');
-    close.addEventListener('click', (event) => {
+    popover.querySelector('.reaction-tabs').addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-group]');
+      if (!tab) return;
+      event.stopPropagation();
+      this.setReactionGroup(tab.dataset.group);
+    });
+    popover.querySelector('.reaction-close').addEventListener('click', (event) => {
       event.stopPropagation();
       this.setReactionPicker(false);
     });
-    popover.appendChild(close);
+  }
+
+  setReactionGroup(id) {
+    if (!REACTION_GROUPS.some((group) => group.id === id)) return;
+    this.reactionGroup = id;
+    this.el.reactionPopover.querySelectorAll('.reaction-tabs [data-group]').forEach((tab) => {
+      tab.classList.toggle('selected', tab.dataset.group === id);
+    });
+    this.el.reactionPopover.querySelectorAll('.reaction-panel').forEach((panel) => {
+      panel.hidden = panel.dataset.panel !== id;
+    });
+    const panel = this.el.reactionPopover.querySelector(`.reaction-panel[data-panel="${id}"]`);
+    if (panel) panel.scrollTop = 0;
   }
 
   setReactionPicker(open) {
     this.el.reactionPopover.classList.toggle('hidden', !open);
     this.el.reactionBtn.classList.toggle('is-open', !!open);
+    if (open) this.setReactionGroup(this.reactionGroup);
   }
 
   sendReaction(text) {
@@ -477,7 +630,7 @@ export class PokerUI {
       return;
     }
     if (state.board.length >= 3) {
-      const result = evaluate([...hole, ...state.board]);
+      const result = evaluateBest([...hole, ...state.board]);
       this.el.handHint.innerHTML = `Sua mão: <strong>${result.description}</strong>`;
     } else {
       const cardsText = hole.map((card) => `${rankSymbol(card.r)}${SUITS[card.s].symbol}`).join(' ');

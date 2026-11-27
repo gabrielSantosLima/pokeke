@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   BOT_REACTIONS,
   PLAYER_REACTIONS,
+  REACTION_GROUPS,
   pickBotReaction,
 } from '../src/reactions.js';
 
@@ -27,6 +28,18 @@ test('player reaction picker has a broad emoji set', () => {
     assert.ok(String(reaction).trim().length > 0);
     assert.ok(String(reaction).length <= 40);
   }
+});
+
+test('reaction picker is grouped into emojis and phrases', () => {
+  assert.deepEqual(
+    REACTION_GROUPS.map((group) => group.id),
+    ['emojis', 'phrases'],
+  );
+  const [emojis, phrases] = REACTION_GROUPS;
+  assert.ok(emojis.items.length >= 100);
+  assert.ok(phrases.items.length >= 40);
+  assert.equal(new Set([...emojis.items, ...phrases.items]).size, PLAYER_REACTIONS.length);
+  assert.ok(phrases.items.every((item) => item.length <= 40));
 });
 
 test('bot reactions cover every gameplay kind', () => {

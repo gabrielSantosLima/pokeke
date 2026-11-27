@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050a08" />
+    <title>Pokeke · Estudo de cartas especiais</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Sora:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --font-display: 'Fraunces', Georgia, serif;
+        --font-ui: 'Sora', system-ui, sans-serif;
+        --bg: #050a08;
+        --ink: #eef6f0;
+        --muted: #9ab2a4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(ellipse 70% 40% at 50% -10%, rgba(36, 112, 79, 0.32), transparent 70%),
+          radial-gradient(ellipse 40% 30% at 100% 40%, rgba(216, 179, 106, 0.08), transparent 70%),
+          var(--bg);
+        color: var(--ink);
+        font-family: var(--font-ui);
+        min-height: 100vh;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 4px 4px;
+        opacity: 0.35;
+      }
+
+      .hero {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 72px 24px 36px;
+        text-align: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: #d8b36a;
+      }
+
+      .eyebrow::before {
+        content: '♠';
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .hero h1 {
+        margin: 14px 0 12px;
+        font-family: var(--font-display);
+        font-size: clamp(40px, 7vw, 76px);
+        line-height: 0.98;
+        letter-spacing: -0.03em;
+        background: linear-gradient(120deg, #ffffff 10%, #e7c98a 58%, #8ef0c0 110%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .hero > p {
+        max-width: 720px;
+        margin: 0 auto;
+        font-size: 15px;
+        line-height: 1.65;
+        color: var(--muted);
+      }
+
+      .hero-note {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 22px;
+        padding: 8px 14px;
+        border: 1px solid rgba(216, 179, 106, 0.24);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.28);
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #cfb47a;
+      }
+
+      .jump {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 14px 20px;
+        background: rgba(5, 10, 8, 0.82);
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .jump a {
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        transition: 0.18s ease;
+      }
+
+      .jump a:hover {
+        color: #fff6dd;
+        border-color: rgba(216, 179, 106, 0.45);
+        background: rgba(216, 179, 106, 0.1);
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 20px 24px 80px;
+      }
+
+      .showcase {
+        padding: 48px 0 8px;
+      }
+
+      .showcase + .showcase {
+        margin-top: 28px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        padding-top: 64px;
+      }
+
+      .showcase-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+      }
+
+      .showcase-head h2 {
+        margin: 6px 0 8px;
+        font-family: var(--font-display);
+        font-size: clamp(28px, 4vw, 44px);
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+
+      .showcase-head p {
+        max-width: 620px;
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .palette {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.22);
+      }
+
+      .palette span {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--c);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.22);
+      }
+
+      .card-stage {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 22px;
+        padding: 38px 22px;
+        border-radius: 30px;
+        border: 1px solid var(--stage-line, rgba(255, 255, 255, 0.08));
+        background: var(--stage-bg, rgba(0, 0, 0, 0.25));
+        justify-items: center;
+      }
+
+      .special-card {
+        position: relative;
+        width: min(100%, 196px);
+        aspect-ratio: 2.5 / 3.5;
+        border-radius: var(--card-radius, 18px);
+        background: var(--card-bg);
+        border: 1px solid var(--card-line);
+        color: var(--card-ink);
+        box-shadow: var(--card-shadow);
+        isolation: isolate;
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+      }
+
+      .special-card:hover {
+        transform: translateY(-6px) rotate(-0.5deg);
+        box-shadow: var(--card-shadow-hover, var(--card-shadow));
+      }
+
+      .card-inner {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        overflow: hidden;
+        border-radius: inherit;
+      }
+
+      .card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .card-kind {
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        line-height: 1.35;
+        text-transform: uppercase;
+        color: var(--kind-color, var(--accent));
+      }
+
+      .card-pip {
+        display: grid;
+        place-items: center;
+        width: 23px;
+        height: 23px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        border: 1px solid color-mix(in srgb, var(--kind-color, var(--accent)) 55%, transparent);
+        background: color-mix(in srgb, var(--kind-color, var(--accent)) 12%, transparent);
+        color: var(--kind-color, var(--accent));
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .card-art {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        margin: 16px auto 12px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--kind-color, var(--accent)) 28%, transparent), transparent 66%),
+          rgba(0, 0, 0, 0.2);
+        border: 1px solid color-mix(in srgb, var(--kind-color, var(--accent)) 34%, transparent);
+        box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.28);
+      }
+
+      .card-glyph {
+        font-size: 48px;
+        line-height: 1;
+        filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
+      }
+
+      .card-body {
+        text-align: center;
+      }
+
+      .card-name {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 23px;
+        line-height: 1;
+        letter-spacing: -0.01em;
+      }
+
+      .card-desc {
+        margin: 8px 0 0;
+        font-size: 9.5px;
+        line-height: 1.45;
+        color: var(--card-muted);
+      }
+
+      .card-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid color-mix(in srgb, var(--card-ink) 12%, transparent);
+        font-size: 7px;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--card-muted);
+      }
+
+      .card-mark {
+        color: var(--kind-color, var(--accent));
+        font-size: 11px;
+        letter-spacing: 0;
+      }
+
+      .card-common {
+        --kind-color: var(--common-color, var(--accent));
+      }
+
+      .card-power {
+        --kind-color: var(--power-color, var(--accent));
+      }
+
+      .card-market {
+        --kind-color: var(--market-color, var(--accent-2));
+      }
+
+      .card-joker {
+        --kind-color: var(--joker-color, var(--accent));
+      }
+
+      .design-notes {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .design-notes span {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* ---------------------------------------------------------- Gema Arcana */
+
+      .theme-gema {
+        --accent: #e3c37a;
+        --accent-2: #8ef0c0;
+        --common-color: #e3c37a;
+        --power-color: #8ef0c0;
+        --market-color: #e3c37a;
+        --joker-color: #c8a6ff;
+        --card-bg: linear-gradient(155deg, #19442f 0%, #0a1c14 58%, #07110d 100%);
+        --card-ink: #f6f1e2;
+        --card-muted: #a8c5b5;
+        --card-line: rgba(216, 179, 106, 0.48);
+        --card-radius: 18px;
+        --card-shadow: 0 28px 60px -24px #000, inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        --card-shadow-hover: 0 36px 70px -20px #000, 0 0 38px -18px rgba(142, 240, 192, 0.75);
+        --stage-bg:
+          radial-gradient(ellipse at 50% 20%, rgba(47, 143, 99, 0.24), transparent 62%),
+          linear-gradient(180deg, #0a1711, #06100c);
+        --stage-line: rgba(216, 179, 106, 0.22);
+      }
+
+      .theme-gema .special-card::before {
+        content: '';
+        position: absolute;
+        inset: 7px;
+        z-index: 1;
+        border-radius: 12px;
+        border: 1px solid rgba(216, 179, 106, 0.26);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        pointer-events: none;
+      }
+
+      .theme-gema .special-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        background:
+          radial-gradient(circle at 50% -12%, rgba(142, 240, 192, 0.22), transparent 54%),
+          radial-gradient(circle at 10% 100%, rgba(216, 179, 106, 0.12), transparent 45%);
+        pointer-events: none;
+      }
+
+      .theme-gema .card-art {
+        border-width: 1px;
+        box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3), 0 0 24px -10px var(--kind-color);
+      }
+
+      /* ------------------------------------------------------------- Neon */
+
+      .theme-neon {
+        --accent: #57f2ff;
+        --accent-2: #ff4fd8;
+        --common-color: #b8fff5;
+        --power-color: #57f2ff;
+        --market-color: #ff4fd8;
+        --joker-color: #b6ff5c;
+        --card-bg: linear-gradient(160deg, #0b1425 0%, #05060d 64%);
+        --card-ink: #eefcff;
+        --card-muted: #8aa4b4;
+        --card-line: rgba(87, 242, 255, 0.48);
+        --card-radius: 16px;
+        --card-shadow:
+          0 0 0 1px rgba(255, 79, 216, 0.16),
+          0 24px 60px -22px #000,
+          0 0 42px -16px rgba(87, 242, 255, 0.7);
+        --card-shadow-hover:
+          0 0 0 1px rgba(255, 79, 216, 0.35),
+          0 32px 70px -18px #000,
+          0 0 58px -12px rgba(87, 242, 255, 0.95);
+        --stage-bg:
+          radial-gradient(ellipse at 50% 0%, rgba(87, 242, 255, 0.14), transparent 60%),
+          radial-gradient(ellipse at 80% 100%, rgba(255, 79, 216, 0.12), transparent 55%),
+          #04060c;
+        --stage-line: rgba(87, 242, 255, 0.22);
+      }
+
+      .theme-neon .special-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 255, 255, 0.045) 0 1px,
+          transparent 1px 4px
+        );
+        mix-blend-mode: screen;
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      .theme-neon .special-card::after {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        z-index: 0;
+        border-radius: inherit;
+        background: conic-gradient(
+          from 210deg,
+          transparent 0 20%,
+          rgba(87, 242, 255, 0.34) 28%,
+          transparent 38% 58%,
+          rgba(255, 79, 216, 0.3) 68%,
+          transparent 78% 100%
+        );
+        filter: blur(10px);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      .theme-neon .card-art {
+        border-radius: 18px;
+        background:
+          linear-gradient(135deg, rgba(87, 242, 255, 0.12), transparent 45%),
+          rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 0 28px rgba(87, 242, 255, 0.16), 0 0 26px -12px var(--kind-color);
+      }
+
+      .theme-neon .card-name {
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-family: var(--font-ui);
+        font-weight: 600;
+        font-size: 18px;
+      }
+
+      /* ------------------------------------------------------------- Papel */
+
+      .theme-papel {
+        --accent: #9c3b2e;
+        --accent-2: #3c5a78;
+        --common-color: #6f4a2a;
+        --power-color: #9c3b2e;
+        --market-color: #3c5a78;
+        --joker-color: #4b2a63;
+        --card-bg:
+          radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.5), transparent 30%),
+          linear-gradient(145deg, #f1e7cf 0%, #dfcfad 100%);
+        --card-ink: #34281d;
+        --card-muted: #6b5843;
+        --card-line: rgba(80, 55, 30, 0.42);
+        --card-radius: 8px;
+        --card-shadow: 0 22px 46px -22px #000, inset 0 0 40px rgba(112, 79, 40, 0.14);
+        --card-shadow-hover: 0 30px 54px -20px #000, inset 0 0 40px rgba(112, 79, 40, 0.18);
+        --stage-bg:
+          radial-gradient(ellipse at 50% 30%, rgba(160, 120, 70, 0.18), transparent 60%),
+          linear-gradient(180deg, #17120d, #0c0906);
+        --stage-line: rgba(216, 179, 106, 0.18);
+      }
+
+      .theme-papel .special-card::before {
+        content: '';
+        position: absolute;
+        inset: 8px;
+        z-index: 1;
+        border-radius: 4px;
+        border: 2px double rgba(80, 55, 30, 0.35);
+        pointer-events: none;
+      }
+
+      .theme-papel .special-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        background-image: radial-gradient(rgba(80, 55, 30, 0.12) 0.8px, transparent 0.8px);
+        background-size: 5px 5px;
+        opacity: 0.6;
+        mix-blend-mode: multiply;
+        pointer-events: none;
+      }
+
+      .theme-papel .card-art {
+        border-radius: 12px;
+        border: 1px solid rgba(80, 55, 30, 0.24);
+        background:
+          radial-gradient(circle at 50% 35%, rgba(156, 59, 46, 0.16), transparent 65%),
+          rgba(255, 250, 238, 0.35);
+        box-shadow: inset 0 0 24px rgba(112, 79, 40, 0.1);
+      }
+
+      .theme-papel .card-name {
+        font-family: var(--font-display);
+      }
+
+      .theme-papel .card-pip {
+        border-color: rgba(80, 55, 30, 0.3);
+        background: rgba(156, 59, 46, 0.1);
+      }
+
+      .theme-papel .card-bottom {
+        border-top-color: rgba(80, 55, 30, 0.18);
+      }
+
+      /* ---------------------------------------------------------- Minimal */
+
+      .theme-minimal {
+        --accent: #d9b86a;
+        --accent-2: #7ed6a7;
+        --common-color: #d9b86a;
+        --power-color: #7ed6a7;
+        --market-color: #d9b86a;
+        --joker-color: #c3a6ff;
+        --card-bg: linear-gradient(160deg, #171d19 0%, #0b100d 100%);
+        --card-ink: #f0f4f1;
+        --card-muted: #8e9d94;
+        --card-line: rgba(217, 184, 106, 0.26);
+        --card-radius: 16px;
+        --card-shadow: 0 22px 50px -26px #000, inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        --card-shadow-hover: 0 30px 60px -22px #000, inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        --stage-bg:
+          radial-gradient(ellipse at 50% 0%, rgba(217, 184, 106, 0.07), transparent 58%),
+          #080c0a;
+        --stage-line: rgba(255, 255, 255, 0.07);
+      }
+
+      .theme-minimal .special-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), transparent 38%);
+        pointer-events: none;
+      }
+
+      .theme-minimal .special-card::after {
+        content: '';
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 48px;
+        height: 1px;
+        z-index: 1;
+        background: linear-gradient(90deg, transparent, rgba(217, 184, 106, 0.45), transparent);
+        pointer-events: none;
+      }
+
+      .theme-minimal .card-art {
+        width: 90px;
+        height: 90px;
+        margin-top: 20px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .theme-minimal .card-glyph {
+        font-size: 54px;
+        filter: grayscale(0.15) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
+      }
+
+      .theme-minimal .card-kind {
+        font-weight: 500;
+      }
+
+      .theme-minimal .card-name {
+        font-family: var(--font-ui);
+        font-weight: 300;
+        letter-spacing: -0.03em;
+      }
+
+      .guide {
+        margin-top: 72px;
+        padding: 32px;
+        border-radius: 26px;
+        border: 1px solid rgba(216, 179, 106, 0.18);
+        background:
+          radial-gradient(ellipse at 10% 0%, rgba(216, 179, 106, 0.1), transparent 50%),
+          rgba(0, 0, 0, 0.24);
+      }
+
+      .guide h2 {
+        margin: 0 0 10px;
+        font-family: var(--font-display);
+        font-size: 30px;
+      }
+
+      .guide p,
+      .guide li {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .guide ul {
+        margin: 12px 0 18px;
+        padding-left: 20px;
+      }
+
+      .guide strong {
+        color: #f0e3c4;
+        font-weight: 600;
+      }
+
+      .guide .reply {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(216, 179, 106, 0.12);
+        border: 1px solid rgba(216, 179, 106, 0.28);
+        color: #f1e3c3;
+        font-size: 12px;
+      }
+
+      footer {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 24px 56px;
+        color: rgba(154, 178, 164, 0.55);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        text-align: center;
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          padding-top: 48px;
+        }
+
+        .showcase-head {
+          align-items: flex-start;
+        }
+
+        .card-stage {
+          gap: 16px;
+          padding: 24px 14px;
+        }
+
+        .special-card {
+          width: min(100%, 172px);
+        }
+
+        .card-inner {
+          padding: 12px;
+        }
+
+        .card-art {
+          width: 78px;
+          height: 78px;
+          margin: 12px auto 10px;
+        }
+
+        .card-glyph {
+          font-size: 38px;
+        }
+
+        .card-name {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="eyebrow">Pokeke · Variantes</div>
+      <h1>Cartas especiais</h1>
+      <p>
+        Quatro direções visuais para as cartas de poder, do mercado e do curinga.
+        A ideia é escolher o clima antes de desenhar as regras finais.
+      </p>
+      <div class="hero-note">Prévia de design · nenhuma carta está no jogo ainda</div>
+    </header>
+
+    <nav class="jump" aria-label="Estilos de carta">
+      <a href="#gema">Gema Arcana</a>
+      <a href="#neon">Neon de Mesa</a>
+      <a href="#papel">Papel Antigo</a>
+      <a href="#minimal">Minimal Premium</a>
+    </nav>
+
+    <main id="showcases"></main>
+
+    <section class="guide" aria-label="Como escolher">
+      <h2>Como combinar</h2>
+      <p>
+        Você pode escolher um estilo inteiro ou misturar elementos. Exemplos:
+      </p>
+      <ul>
+        <li><strong>Gema + Neon:</strong> moldura ornamentada com brilho ciano nas cartas de poder.</li>
+        <li><strong>Papel + Minimal:</strong> textura de papel apenas no curinga, com o resto da mesa limpo.</li>
+        <li><strong>Neon + Papel:</strong> cartas de poder em neon e cartas do mercado como selos antigos.</li>
+      </ul>
+      <p>
+        Também podemos usar uma cor por tipo: poder, mercado e curinga. Isso ajuda
+        o jogador a reconhecer a função da carta antes de ler o texto.
+      </p>
+      <div class="reply">Responda com o estilo escolhido e os ajustes que quiser.</div>
+    </section>
+
+    <footer>Pokeke · estudo de cartas especiais</footer>
+
+    <script>
+      const designs = [
+        {
+          id: 'gema',
+          className: 'theme-gema',
+          kicker: '01 · Fantasia de mesa',
+          title: 'Gema Arcana',
+          description:
+            'Verde profundo, ouro e pedra. A carta parece um objeto de coleção: moldura dupla, brilho de gema e tipografia clássica. Combina com a fantasia e com a leitura de “carta rara”.',
+          palette: ['#0a1c14', '#d8b36a', '#8ef0c0', '#c8a6ff'],
+          notes: ['Melhor para fantasia', 'Alto contraste no feltro', 'Pede animação de brilho'],
+        },
+        {
+          id: 'neon',
+          className: 'theme-neon',
+          title: 'Neon de Mesa',
+          kicker: '02 · Arcade noturno',
+          description:
+            'Preto, ciano e magenta. A carta tem cara de fliperama, holografia e mesa clandestina. Funciona bem se as variantes forem mais caóticas e divertidas.',
+          palette: ['#05060d', '#57f2ff', '#ff4fd8', '#b6ff5c'],
+          notes: ['Melhor para caos e velocidade', 'Glow forte no fundo escuro', 'Cuidado com excesso de brilho'],
+        },
+        {
+          id: 'papel',
+          className: 'theme-papel',
+          title: 'Papel Antigo',
+          kicker: '03 · Clube de cartas',
+          description:
+            'Papel, tinta e selo de cera. A carta parece uma relíquia de um clube de poker antigo, com textura, moldura dupla e cores de impressão. Combina com variantes narrativas.',
+          palette: ['#f1e7cf', '#9c3b2e', '#3c5a78', '#4b2a63'],
+          notes: ['Melhor para fantasia e história', 'Contraste suave no feltro escuro', 'Precisa de textura sutil'],
+        },
+        {
+          id: 'minimal',
+          className: 'theme-minimal',
+          title: 'Minimal Premium',
+          kicker: '04 · Mesa contemporânea',
+          description:
+            'Carvão, linha fina e muito espaço vazio. A informação vem primeiro: ícone grande, nome curto e uma única cor de destaque. Combina com a interface atual do Pokeke.',
+          palette: ['#0b100d', '#d9b86a', '#7ed6a7', '#c3a6ff'],
+          notes: ['Melhor para leitura rápida', 'Mais fácil de produzir em série', 'Deixa o feltro respirar'],
+        },
+      ];
+
+      const cards = [
+        {
+          kind: 'common',
+          kindLabel: 'Carta comum',
+          badge: 'A♠',
+          name: 'Ás de Espadas',
+          description: 'A carta base do baralho. Serve de referência de tamanho, peso e leitura.',
+          icon: '♠',
+          footer: 'Naipe · Espadas',
+        },
+        {
+          kind: 'power',
+          kindLabel: 'Poder · 1 uso',
+          badge: 'P',
+          name: 'Visão',
+          description: 'Veja a próxima carta da mesa antes de agir.',
+          icon: '👁️',
+          footer: 'Ativa na sua vez',
+        },
+        {
+          kind: 'power',
+          kindLabel: 'Poder · 1 uso',
+          badge: 'P',
+          name: 'Troca',
+          description: 'Troque uma carta da sua mão pela próxima do baralho.',
+          icon: '🔄',
+          footer: 'Só antes do flop',
+        },
+        {
+          kind: 'market',
+          kindLabel: 'Mercado · 2 BB',
+          badge: 'M',
+          name: 'Carta Extra',
+          description: 'Compre uma terceira carta e use as duas melhores.',
+          icon: '🛒',
+          footer: '1 compra por mão',
+        },
+        {
+          kind: 'joker',
+          kindLabel: 'Curinga',
+          badge: '★',
+          name: 'Coringa',
+          description: 'Vale como qualquer carta para completar a melhor mão.',
+          icon: '🃏',
+          footer: 'Carta selvagem',
+        },
+      ];
+
+      const renderCard = (card) => `
+        <article class="special-card card-${card.kind}">
+          <div class="card-inner">
+            <div class="card-top">
+              <span class="card-kind">${card.kindLabel}</span>
+              <span class="card-pip">${card.badge}</span>
+            </div>
+            <div class="card-art"><span class="card-glyph">${card.icon}</span></div>
+            <div class="card-body">
+              <h3 class="card-name">${card.name}</h3>
+              <p class="card-desc">${card.description}</p>
+            </div>
+            <div class="card-bottom">
+              <span>${card.footer}</span>
+              <span class="card-mark">♠</span>
+            </div>
+          </div>
+        </article>
+      `;
+
+      const renderDesign = (design) => `
+        <section class="showcase ${design.className}" id="${design.id}">
+          <div class="showcase-inner">
+            <div class="showcase-head">
+              <div>
+                <span class="eyebrow">${design.kicker}</span>
+                <h2>${design.title}</h2>
+                <p>${design.description}</p>
+              </div>
+              <div class="palette" aria-label="Paleta de cores">
+                ${design.palette.map((color) => `<span style="--c:${color}"></span>`).join('')}
+              </div>
+            </div>
+            <div class="card-stage">
+              ${cards.map(renderCard).join('')}
+            </div>
+            <div class="design-notes">
+              ${design.notes.map((note) => `<span>${note}</span>`).join('')}
+            </div>
+          </div>
+        </section>
+      `;
+
+      document.getElementById('showcases').innerHTML = designs.map(renderDesign).join('');
+    </script>
+  </body>
+</html>

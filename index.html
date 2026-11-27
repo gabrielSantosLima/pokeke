@@ -17,7 +17,7 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b2a1f'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='%23e7c98a'%3E%E2%99%A0%3C/text%3E%3C/svg%3E"
     />
   </head>
-  <body>
+  <body data-theme="gema">
     <div class="app">
       <header class="topbar">
         <div class="brand">
@@ -36,6 +36,10 @@
             <span>Blinds</span>
             <strong id="blind-label">10 / 20</strong>
           </div>
+          <div class="meta-pill variant-pill">
+            <span>Variante</span>
+            <strong id="variant-label">Clássico</strong>
+          </div>
           <button class="icon-btn speed-btn" id="speed-btn" type="button" title="Ritmo da mesa">
             <span class="speed-icon">🐢</span><span class="speed-text">Calma</span>
           </button>
@@ -44,6 +48,9 @@
           </button>
           <button class="icon-btn update-btn" id="update-btn" type="button" title="Atualizações" aria-label="Atualizações" hidden>
             ⬆️
+          </button>
+          <button class="icon-btn" id="theme-btn" type="button" title="Mudar tema" aria-label="Mudar tema">
+            🎨
           </button>
           <button class="icon-btn" id="help-btn" type="button" title="Como jogar" aria-label="Como jogar">
             ?
@@ -90,6 +97,12 @@
                   <div class="reaction-popover hidden" id="reaction-popover" aria-label="Reações"></div>
                 </div>
               </div>
+            </div>
+
+            <div class="variant-row" id="variant-row">
+              <div class="power-tray" id="power-tray" hidden></div>
+              <div class="power-intel" id="power-intel" hidden></div>
+              <button class="btn btn-ghost market-btn" id="market-btn" type="button" hidden>🛒 Mercado</button>
             </div>
 
             <div class="action-row" id="action-row">
@@ -147,6 +160,24 @@
         <p class="modal-sub">
           Jogue contra bots ou reúna a galera na mesma rede local. Quem faltar na mesa vira bot.
         </p>
+
+        <div class="variant-carousel" id="variant-carousel">
+          <div class="variant-carousel-head">
+            <div>
+              <span class="variant-carousel-kicker">Escolha a variante</span>
+              <strong id="variant-carousel-title">Clássico</strong>
+            </div>
+            <div class="variant-carousel-nav">
+              <button id="variant-prev" type="button" title="Variante anterior" aria-label="Variante anterior">‹</button>
+              <button id="variant-next" type="button" title="Próxima variante" aria-label="Próxima variante">›</button>
+            </div>
+          </div>
+          <div class="variant-track" id="variant-track"></div>
+          <div class="variant-detail">
+            <p id="variant-description">Texas Hold'em puro, sem regras especiais.</p>
+            <button class="btn variant-tutorial-btn" id="variant-tutorial-link" type="button">📖 Como jogar esta variante</button>
+          </div>
+        </div>
 
         <div class="mode-tabs" id="mode-tabs">
           <button type="button" data-mode="solo" class="selected">Solo</button>
@@ -388,8 +419,10 @@
         <h2 id="end-title">Fim de jogo</h2>
         <p class="modal-sub" id="end-text"></p>
         <div class="end-stats" id="end-stats"></div>
-        <button class="btn btn-primary btn-play" id="again-btn" type="button">Jogar novamente</button>
-        <button class="btn btn-ghost btn-play" id="end-menu-btn" type="button">Mudar configurações</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-play" id="again-btn" type="button">Jogar novamente</button>
+          <button class="btn btn-ghost btn-play" id="end-menu-btn" type="button">Mudar configurações</button>
+        </div>
         <p class="modal-note" id="end-note"></p>
       </div>
     </div>
@@ -400,8 +433,10 @@
         <div class="modal-brand"><span>♠</span> POKEKE</div>
         <h2 id="error-title">Algo deu errado</h2>
         <p class="modal-sub" id="error-text"></p>
-        <button class="btn btn-primary btn-play" id="error-retry" type="button">Tentar novamente</button>
-        <button class="btn btn-ghost btn-play" id="error-dismiss" type="button">Voltar</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-play" id="error-retry" type="button">Tentar novamente</button>
+          <button class="btn btn-ghost btn-play" id="error-dismiss" type="button">Voltar</button>
+        </div>
       </div>
     </div>
 
@@ -414,9 +449,61 @@
         <div class="update-progress" id="update-progress" hidden>
           <div class="update-progress-bar" id="update-progress-bar"></div>
         </div>
-        <button class="btn btn-primary btn-play" id="update-primary" type="button">Verificar atualizações</button>
-        <button class="btn btn-ghost btn-play" id="update-release" type="button">Ver página de releases</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-play" id="update-primary" type="button">Verificar atualizações</button>
+          <button class="btn btn-ghost btn-play" id="update-release" type="button">Ver página de releases</button>
+        </div>
         <p class="modal-note" id="update-note"></p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="theme-overlay">
+      <div class="modal modal-theme" role="dialog" aria-modal="true" aria-labelledby="theme-title">
+        <button class="modal-close" id="theme-close" type="button" title="Fechar" aria-label="Fechar temas">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE · TEMA</div>
+        <h2 id="theme-title">Escolha o visual</h2>
+        <p class="modal-sub">O tema muda a mesa, os modais e as cartas. A escolha fica salva neste dispositivo.</p>
+        <div class="theme-grid" id="theme-grid"></div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="power-draft-overlay">
+      <div class="modal modal-draft" role="dialog" aria-modal="true" aria-labelledby="power-draft-title">
+        <button class="modal-close" id="power-draft-close" type="button" title="Sortear cartas" aria-label="Sortear cartas">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE · MESA ARCANA</div>
+        <h2 id="power-draft-title">Escolha 2 cartas</h2>
+        <p class="modal-sub">Suas escolhas são secretas. Clique em duas cartas e confirme. Elas valem só para esta mão.</p>
+        <div class="draft-grid" id="draft-grid"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-play" id="draft-confirm" type="button" disabled>Confirmar escolhas</button>
+          <button class="btn btn-ghost btn-play" id="draft-random" type="button">Sortear 2 cartas</button>
+        </div>
+        <p class="modal-note" id="draft-note"></p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="power-use-overlay">
+      <div class="modal modal-power-use" role="dialog" aria-modal="true" aria-labelledby="power-use-title">
+        <button class="modal-close" id="power-use-close" type="button" title="Fechar" aria-label="Fechar carta de poder">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE · CARTA DE PODER</div>
+        <h2 id="power-use-title">Carta</h2>
+        <p class="modal-sub" id="power-use-text"></p>
+        <div class="power-choice" id="power-choice"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-play" id="power-use-confirm" type="button">Usar carta</button>
+          <button class="btn btn-ghost btn-play" id="power-use-cancel" type="button">Voltar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="market-overlay">
+      <div class="modal modal-market" role="dialog" aria-modal="true" aria-labelledby="market-title">
+        <button class="modal-close" id="market-close" type="button" title="Fechar" aria-label="Fechar mercado">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE · MERCADO</div>
+        <h2 id="market-title">Ofertas da mão</h2>
+        <p class="modal-sub">Uma compra por mão. O custo sai do seu stack e entra no pote.</p>
+        <div class="market-grid" id="market-grid"></div>
+        <p class="modal-note" id="market-note"></p>
       </div>
     </div>
 

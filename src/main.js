@@ -2,15 +2,20 @@ import { PokerGame, GameAborted } from './game.js';
 import { pickBotProfiles } from './ai.js';
 import { PokerUI } from './ui.js';
 import { initAudio, isMuted, setMuted } from './audio.js';
-import { formatChips } from './cards.js';
+import { formatChips, rankSymbol, SUITS, isJoker } from './cards.js';
 import { SPEEDS, SPEED_ORDER } from './speed.js';
 import { RemoteGame } from './remote-game.js';
 import { TUTORIAL_STEPS } from './tutorial.js';
+import { VARIANTS, POWER_BY_ID } from './variants.js';
+import { VARIANT_TUTORIALS } from './variant-tutorials.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const desktop = window.pokekeDesktop || null;
 
 const ui = new PokerUI(document);
+ui.onPower = openPowerModal;
+ui.onMarket = openMarket;
+ui.onDraft = syncDraftOverlay;
 
 const settings = {
   bots: 3,
@@ -23,7 +28,16 @@ const settings = {
   mpBlinds: '10:20',
   mpDifficulty: 'normal',
   mpSpeed: 'calm',
+  variant: 'classic',
+  mpVariant: 'classic',
 };
+
+const THEMES = [
+  { id: 'gema', name: 'Gema Arcana', description: 'Verde profundo, ouro e cartas de coleção.', swatches: ['#0a1c14', '#d8b36a', '#8ef0c0'] },
+  { id: 'neon', name: 'Neon de Mesa', description: 'Preto, ciano e magenta com brilho arcade.', swatches: ['#05060d', '#57f2ff', '#ff4fd8'] },
+  { id: 'papel', name: 'Papel Antigo', description: 'Pergaminho, tinta e selo de cera.', swatches: ['#f1e7cf', '#9c3b2e', '#3c5a78'] },
+  { id: 'minimal', name: 'Minimal Premium', description: 'Carvão, linha fina e leitura rápida.', swatches: ['#0b100d', '#d9b86a', '#7ed6a7'] },
+];
 
 let currentGame = null;
 let currentSpeed = 'calm';
@@ -78,6 +92,35 @@ const els = {
   updateRelease: document.getElementById('update-release'),
   updateNote: document.getElementById('update-note'),
   updateClose: document.getElementById('update-close'),
+  variantLabel: document.getElementById('variant-label'),
+  variantCarousel: document.getElementById('variant-carousel'),
+  variantTrack: document.getElementById('variant-track'),
+  variantPrev: document.getElementById('variant-prev'),
+  variantNext: document.getElementById('variant-next'),
+  variantCarouselTitle: document.getElementById('variant-carousel-title'),
+  variantDescription: document.getElementById('variant-description'),
+  variantTutorialLink: document.getElementById('variant-tutorial-link'),
+  themeBtn: document.getElementById('theme-btn'),
+  theme: document.getElementById('theme-overlay'),
+  themeGrid: document.getElementById('theme-grid'),
+  themeClose: document.getElementById('theme-close'),
+  draft: document.getElementById('power-draft-overlay'),
+  draftGrid: document.getElementById('draft-grid'),
+  draftConfirm: document.getElementById('draft-confirm'),
+  draftRandom: document.getElementById('draft-random'),
+  draftNote: document.getElementById('draft-note'),
+  draftClose: document.getElementById('power-draft-close'),
+  powerUse: document.getElementById('power-use-overlay'),
+  powerUseTitle: document.getElementById('power-use-title'),
+  powerUseText: document.getElementById('power-use-text'),
+  powerChoice: document.getElementById('power-choice'),
+  powerUseConfirm: document.getElementById('power-use-confirm'),
+  powerUseCancel: document.getElementById('power-use-cancel'),
+  powerUseClose: document.getElementById('power-use-close'),
+  market: document.getElementById('market-overlay'),
+  marketGrid: document.getElementById('market-grid'),
+  marketNote: document.getElementById('market-note'),
+  marketClose: document.getElementById('market-close'),
 };
 
 let toastTimer = null;
@@ -85,6 +128,12 @@ let reconnectRun = 0;
 let reconnectTimer = null;
 let reconnectSocket = null;
 let tutorialStep = 0;
+let activeTutorial = TUTORIAL_STEPS;
+let tutorialVariant = 'classic';
+let currentVariant = 'classic';
+let draftPicks = [];
+let powerContext = null;
+let marketContext = null;
 let errorRetryHandler = null;
 let appInfo = null;
 let updateStatus = {
@@ -106,6 +155,10 @@ function hideOverlays() {
   els.reconnect.classList.add('hidden');
   els.error.classList.add('hidden');
   els.updateOverlay.classList.add('hidden');
+  els.theme.classList.add('hidden');
+  els.powerUse.classList.add('hidden');
+  els.market.classList.add('hidden');
+  els.draft.classList.add('hidden');
 }
 
 function showError({ title = 'Algo deu errado', text, retry = null }) {
@@ -358,6 +411,137 @@ function initUpdates() {
   }
 }
 
+function applyTheme(id) {
+  const theme = THEMES.find((entry) => entry.id === id) || THEMES[0];
+  document.body.dataset.theme = theme.id;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme.swatches[0]);
+  try {
+    localStorage.setItem('pokeke:theme', theme.id);
+  } catch {
+    /* ignore */
+  }
+  if (els.themeGrid) {
+    els.themeGrid.querySelectorAll('[data-theme]').forEach((button) => {
+      button.classList.toggle('selected', button.dataset.theme === theme.id);
+    });
+  }
+}
+
+function renderThemeGrid() {
+  const chosen = document.body.dataset.theme || 'gema';
+  els.themeGrid.innerHTML = THEMES.map(
+    (theme) => `
+      <button class="theme-option${theme.id === chosen ? ' selected' : ''}" type="button" data-theme="${theme.id}">
+        <span class="theme-swatches">${theme.swatches
+          .map((color) => `<span style="--swatch:${color}"></span>`)
+          .join('')}</span>
+        <strong>${theme.name}</strong>
+        <small>${theme.description}</small>
+      </button>
+    `,
+  ).join('');
+}
+
+function initTheme() {
+  let saved = 'gema';
+  try {
+    saved = localStorage.getItem('pokeke:theme') || 'gema';
+  } catch {
+    saved = 'gema';
+  }
+  applyTheme(saved);
+  renderThemeGrid();
+  els.themeBtn.addEventListener('click', () => {
+    renderThemeGrid();
+    els.theme.classList.remove('hidden');
+  });
+  els.themeClose.addEventListener('click', () => els.theme.classList.add('hidden'));
+  els.themeGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-theme]');
+    if (!button) return;
+    applyTheme(button.dataset.theme);
+    renderThemeGrid();
+  });
+}
+
+function variantInfo(id) {
+  return VARIANTS[id] || VARIANTS.classic;
+}
+
+function activeVariantScope() {
+  return gameMode === 'host' ? 'host' : 'solo';
+}
+
+function activeVariantId() {
+  return activeVariantScope() === 'host' ? settings.mpVariant : settings.variant;
+}
+
+function renderVariantCarousel() {
+  if (!els.variantTrack) return;
+  const selected = activeVariantId();
+  els.variantTrack.innerHTML = Object.values(VARIANTS)
+    .map(
+      (variant) => `
+        <button class="variant-slide variant-${variant.id}${variant.id === selected ? ' selected' : ''}" type="button" data-variant="${variant.id}">
+          <span class="variant-slide__icon">${variant.icon}</span>
+          <strong>${variant.name}</strong>
+          <small>${variant.short}</small>
+          <span class="variant-slide__status">${variant.id === selected ? 'Selecionada' : 'Selecionar'}</span>
+        </button>
+      `,
+    )
+    .join('');
+  const active = els.variantTrack.querySelector('.variant-slide.selected');
+  if (active) {
+    const track = els.variantTrack;
+    const target = active.offsetLeft - track.clientWidth / 2 + active.clientWidth / 2;
+    track.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  }
+}
+
+function refreshVariantNotes() {
+  const active = variantInfo(activeVariantId());
+  if (els.variantDescription) {
+    els.variantDescription.textContent = `${active.icon} ${active.description}`;
+  }
+  if (els.variantCarouselTitle) els.variantCarouselTitle.textContent = active.name;
+  if (els.variantLabel) els.variantLabel.textContent = variantInfo(currentVariant).name;
+  renderVariantCarousel();
+}
+
+function selectVariant(scope, id) {
+  if (!VARIANTS[id]) return;
+  if (scope === 'host') settings.mpVariant = id;
+  else settings.variant = id;
+  refreshVariantNotes();
+  const seenKey = `pokeke:variantTutorial:${id}`;
+  try {
+    if (id !== 'classic' && localStorage.getItem(seenKey) !== '1') {
+      openTutorialForVariant(id);
+      localStorage.setItem(seenKey, '1');
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+els.variantTrack.addEventListener('click', (event) => {
+  const slide = event.target.closest('[data-variant]');
+  if (!slide) return;
+  selectVariant(activeVariantScope(), slide.dataset.variant);
+});
+
+els.variantPrev.addEventListener('click', () => {
+  els.variantTrack.scrollBy({ left: -220, behavior: 'smooth' });
+});
+
+els.variantNext.addEventListener('click', () => {
+  els.variantTrack.scrollBy({ left: 220, behavior: 'smooth' });
+});
+
+
+
 function money(value) {
   return formatChips(value);
 }
@@ -376,6 +560,7 @@ function soloConfig(extra = {}) {
     bigBlind,
     difficulty: settings.difficulty,
     speed: settings.speed,
+    variant: settings.variant,
     ...extra,
   };
 }
@@ -404,6 +589,10 @@ document.querySelectorAll('.segmented').forEach((group) => {
   });
 });
 
+els.variantTutorialLink.addEventListener('click', () =>
+  openTutorialForVariant(activeVariantId()),
+);
+
 function setMode(mode) {
   gameMode = mode;
   document.querySelectorAll('#mode-tabs button').forEach((button) => {
@@ -412,6 +601,8 @@ function setMode(mode) {
   document.querySelectorAll('.mode-panel').forEach((panel) => {
     panel.classList.toggle('hidden', panel.dataset.panel !== mode);
   });
+  if (els.variantCarousel) els.variantCarousel.classList.toggle('hidden', mode === 'join');
+  refreshVariantNotes();
   if (mode === 'join') scanRooms();
 }
 
@@ -480,6 +671,8 @@ function showStartMenu() {
   }
   disconnectNet(true);
   hideOverlays();
+  currentVariant = settings.variant;
+  refreshVariantNotes();
   els.start.classList.remove('hidden');
   els.speed.style.display = '';
   ui.reset();
@@ -552,12 +745,15 @@ async function startGame(config) {
   const players = buildPlayers(config);
   const speed = SPEEDS[config.speed] || SPEEDS.calm;
   setSpeed(config.speed || 'calm');
+  currentVariant = config.variant || 'classic';
+  refreshVariantNotes();
 
   const game = new PokerGame({
     players,
     smallBlind,
     bigBlind,
     difficulty: config.difficulty,
+    variant: currentVariant,
     botDelayMin: speed.botDelayMin,
     botDelayMax: speed.botDelayMax,
     pauseScale: speed.pauseScale,
@@ -653,6 +849,7 @@ async function createHostRoom() {
       stack: settings.mpStack,
       difficulty: settings.mpDifficulty,
       speed: settings.mpSpeed,
+      variant: settings.mpVariant,
     });
     connectToRoom({
       url: `ws://127.0.0.1:${info.port}/ws`,
@@ -719,7 +916,8 @@ function renderRooms(rooms) {
     const meta = document.createElement('div');
     meta.className = 'room-meta';
     const statusText = room.status === 'playing' ? 'em andamento' : 'aguardando';
-    meta.textContent = `${room.host || 'Anfitrião'} · ${room.players || 1}/${room.capacity || '?'} jogadores · ${statusText}`;
+    const roomVariant = variantInfo(room.variant);
+    meta.textContent = `${room.host || 'Anfitrião'} · ${room.players || 1}/${room.capacity || '?'} jogadores · ${roomVariant.name} · ${statusText}`;
     main.append(name, meta);
 
     const join = document.createElement('button');
@@ -1083,6 +1281,8 @@ function adoptRejoined(session, socket, message) {
     });
     remote.smallBlind = config.smallBlind || 10;
     remote.bigBlind = config.bigBlind || 20;
+    currentVariant = config.variant || currentVariant;
+    refreshVariantNotes();
     session.remoteGame = remote;
     session.inGame = true;
     session.awaitingRematch = false;
@@ -1244,6 +1444,8 @@ function handleNetEvent(session, message) {
     });
     remote.smallBlind = (message.config && message.config.smallBlind) || 10;
     remote.bigBlind = (message.config && message.config.bigBlind) || 20;
+    currentVariant = (message.config && message.config.variant) || 'classic';
+    refreshVariantNotes();
     session.remoteGame = remote;
     session.inGame = true;
     session.awaitingRematch = false;
@@ -1324,9 +1526,12 @@ function showLobby(session, lobby) {
   start.hidden = !session.isHost || lobby.status === 'playing';
   start.disabled = lobby.players.length === 0;
 
-  document.getElementById('lobby-note').textContent = session.isHost
-    ? 'Você é o anfitrião. Os bots completam os lugares vazios.'
-    : 'Aguardando o anfitrião iniciar a partida.';
+  const selectedVariant = variantInfo(lobby.config && lobby.config.variant);
+  document.getElementById('lobby-note').textContent = `Variante: ${selectedVariant.name}. ${
+    session.isHost
+      ? 'Você é o anfitrião. Os bots completam os lugares vazios.'
+      : 'Aguardando o anfitrião iniciar a partida.'
+  }`;
 }
 
 document.getElementById('lobby-start').addEventListener('click', () => {
@@ -1376,6 +1581,236 @@ function showNetEnd(session, message) {
   els.end.classList.remove('hidden');
 }
 
+// ------------------------------------------------------------- variants UI
+
+function cardText(card) {
+  if (!card) return '—';
+  if (isJoker(card)) return `★${SUITS[card.s].symbol}`;
+  return `${rankSymbol(card.r)}${SUITS[card.s].symbol}`;
+}
+
+function activeGame() {
+  if (net && net.remoteGame) return net.remoteGame;
+  return currentGame;
+}
+
+function submitPowerAction(payload) {
+  const game = activeGame();
+  if (!game) return false;
+  if (game === currentGame) return currentGame.submitPower('human', payload);
+  return game.submitPower(payload);
+}
+
+function submitDraftAction(picks) {
+  const game = activeGame();
+  if (!game) return false;
+  if (game === currentGame) return currentGame.submitPowerDraft('human', picks);
+  return game.submitPowerDraft(picks);
+}
+
+function submitMarketAction(itemId) {
+  const game = activeGame();
+  if (!game) return false;
+  if (game === currentGame) return currentGame.submitMarket('human', itemId);
+  return game.submitMarket(itemId);
+}
+
+let draftOffer = [];
+
+function draftOfferSignature(offer) {
+  return offer.map((card) => card.id).join(',');
+}
+
+function renderDraft() {
+  els.draftGrid.innerHTML = draftOffer
+    .map((card) => {
+      const info = POWER_BY_ID.get(card.id) || card;
+      const selected = draftPicks.includes(card.id);
+      return `<button class="special-card draft-card${selected ? ' selected' : ''}" type="button" data-power="${card.id}">
+        <span class="special-card__kind">${info.kind === 'power' ? 'PODER' : 'CARTA'}</span>
+        <span class="special-card__icon">${info.icon}</span>
+        <strong>${info.name}</strong>
+        <small>${info.description}</small>
+        <span class="special-card__footer">${info.timing === 'preflop' ? 'PRÉ-FLOP' : 'QUALQUER RUA'}</span>
+      </button>`;
+    })
+    .join('');
+  const total = draftPicks.length;
+  els.draftConfirm.disabled = total !== 2;
+  els.draftNote.textContent =
+    total === 2 ? 'Pronto. Confirme para começar a mão.' : `Escolha mais ${2 - total} carta${2 - total === 1 ? '' : 's'}.`;
+}
+
+function syncDraftOverlay(draft) {
+  if (!draft) {
+    els.draft.classList.add('hidden');
+    draftOffer = [];
+    draftPicks = [];
+    return;
+  }
+  const sameOffer =
+    !els.draft.classList.contains('hidden') &&
+    draftOfferSignature(draft.offer) === draftOfferSignature(draftOffer);
+  if (!sameOffer) {
+    draftOffer = draft.offer;
+    draftPicks = draft.picks.slice(0, 2);
+    renderDraft();
+  }
+  els.draft.classList.remove('hidden');
+}
+
+function toggleDraftPick(powerId) {
+  if (draftPicks.includes(powerId)) {
+    draftPicks = draftPicks.filter((id) => id !== powerId);
+  } else if (draftPicks.length < 2) {
+    draftPicks = [...draftPicks, powerId];
+  }
+  renderDraft();
+}
+
+function submitDraft() {
+  if (draftPicks.length !== 2) return;
+  const picks = draftPicks.slice();
+  const ok = submitDraftAction(picks);
+  if (!ok) showToast('Não foi possível confirmar as cartas de poder.');
+  els.draft.classList.add('hidden');
+}
+
+function randomDraft() {
+  const ids = draftOffer.map((card) => card.id);
+  const shuffled = ids.slice().sort(() => Math.random() - 0.5);
+  draftPicks = shuffled.slice(0, 2);
+  submitDraft();
+}
+
+function openPowerModal(power) {
+  const state = ui.state;
+  if (!state || !state.arcana) return;
+  powerContext = { power, targetId: null, cardIndex: null };
+  els.powerUseTitle.textContent = `${power.icon} ${power.name}`;
+  els.powerUseText.textContent = power.description;
+  const me = state.players.find((player) => player.isMe);
+  const choices = [];
+  if (power.target === 'hole') {
+    (me ? me.hole : []).forEach((card, index) => {
+      if (!card) return;
+      choices.push(
+        `<button class="power-target" type="button" data-index="${index}">${cardText(card)}</button>`,
+      );
+    });
+  } else if (power.target === 'opponent') {
+    state.players
+      .filter((player) => !player.isMe && !player.folded && !player.out)
+      .forEach((player) => {
+        choices.push(
+          `<button class="power-target" type="button" data-target="${player.id}">${player.avatar || '🙂'} ${player.name}</button>`,
+        );
+      });
+  }
+  els.powerChoice.innerHTML = choices.join('');
+  els.powerChoice.classList.toggle('hidden', choices.length === 0);
+  els.powerUseConfirm.disabled = power.target !== 'none' && choices.length === 0;
+  els.powerUse.classList.remove('hidden');
+}
+
+function choosePowerTarget(button) {
+  if (!powerContext) return;
+  if (button.dataset.target) {
+    powerContext.targetId = button.dataset.target;
+    powerContext.cardIndex = null;
+  } else if (button.dataset.index !== undefined) {
+    powerContext.cardIndex = Number(button.dataset.index);
+    powerContext.targetId = null;
+  }
+  els.powerChoice.querySelectorAll('.power-target').forEach((item) => {
+    item.classList.toggle('selected', item === button);
+  });
+  els.powerUseConfirm.disabled = false;
+}
+
+function confirmPowerUse() {
+  if (!powerContext) return;
+  const { power, targetId, cardIndex } = powerContext;
+  const ok = submitPowerAction({
+    type: 'power',
+    powerId: power.id,
+    targetId: targetId || undefined,
+    cardIndex: Number.isInteger(cardIndex) ? cardIndex : undefined,
+  });
+  if (!ok) showToast('Esta carta não pode ser usada agora.');
+  els.powerUse.classList.add('hidden');
+  powerContext = null;
+}
+
+function renderMarket() {
+  const market = ui.state && ui.state.market;
+  if (!market) return;
+  const me = ui.state.players.find((player) => player.isMe);
+  const stack = me ? me.stack : 0;
+  els.marketGrid.innerHTML = market.offers
+    .map((item) => {
+      const cost = item.costBB * (ui.state.bigBlind || 20);
+      const affordable = stack > cost;
+      const disabled = market.bought || !market.canBuy || !affordable;
+      return `<button class="market-card" type="button" data-item="${item.id}" ${disabled ? 'disabled' : ''}>
+        <span class="special-card__kind">${item.costBB} BB</span>
+        <span class="special-card__icon">${item.icon}</span>
+        <strong>${item.name}</strong>
+        <small>${item.description}</small>
+        <span class="special-card__footer">${formatChips(cost)} fichas</span>
+      </button>`;
+    })
+    .join('');
+  if (market.bought) {
+    els.marketNote.textContent = 'Você já fez sua compra nesta mão.';
+  } else if (!market.canBuy) {
+    els.marketNote.textContent = 'O mercado abre na sua vez de agir.';
+  } else {
+    els.marketNote.textContent = `Uma compra por mão · seu stack: ${formatChips(stack)}`;
+  }
+}
+
+function openMarket() {
+  if (!ui.state || !ui.state.market) return;
+  renderMarket();
+  els.market.classList.remove('hidden');
+}
+
+function buyMarketItem(itemId) {
+  const ok = submitMarketAction(itemId);
+  if (!ok) {
+    showToast('Não foi possível comprar esta carta.');
+    return;
+  }
+  els.market.classList.add('hidden');
+}
+
+els.draftGrid.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-power]');
+  if (button) toggleDraftPick(button.dataset.power);
+});
+els.draftConfirm.addEventListener('click', submitDraft);
+els.draftRandom.addEventListener('click', randomDraft);
+els.draftClose.addEventListener('click', randomDraft);
+els.powerChoice.addEventListener('click', (event) => {
+  const button = event.target.closest('.power-target');
+  if (button) choosePowerTarget(button);
+});
+els.powerUseConfirm.addEventListener('click', confirmPowerUse);
+els.powerUseCancel.addEventListener('click', () => {
+  els.powerUse.classList.add('hidden');
+  powerContext = null;
+});
+els.powerUseClose.addEventListener('click', () => {
+  els.powerUse.classList.add('hidden');
+  powerContext = null;
+});
+els.marketGrid.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-item]');
+  if (button && !button.disabled) buyMarketItem(button.dataset.item);
+});
+els.marketClose.addEventListener('click', () => els.market.classList.add('hidden'));
+
 // ---------------------------------------------------------------- tutorial
 
 function tutorialSeen() {
@@ -1386,39 +1821,53 @@ function tutorialSeen() {
   }
 }
 
+function tutorialStepsForVariant(id) {
+  if (id === 'classic') return TUTORIAL_STEPS;
+  return VARIANT_TUTORIALS[id] || TUTORIAL_STEPS;
+}
+
 function renderTutorial() {
-  const step = TUTORIAL_STEPS[tutorialStep];
+  const step = activeTutorial[tutorialStep];
   els.tutorialTitle.textContent = step.title;
   els.tutorialText.textContent = step.text;
   els.tutorialVisual.innerHTML = step.visual;
   els.tutorialDots.innerHTML = '';
-  TUTORIAL_STEPS.forEach((_, index) => {
+  activeTutorial.forEach((_, index) => {
     const dot = document.createElement('span');
     dot.classList.toggle('active', index === tutorialStep);
     els.tutorialDots.appendChild(dot);
   });
   els.tutorialBack.disabled = tutorialStep === 0;
   els.tutorialNext.textContent =
-    tutorialStep === TUTORIAL_STEPS.length - 1 ? 'Concluir' : 'Próximo';
+    tutorialStep === activeTutorial.length - 1 ? 'Concluir' : 'Próximo';
 }
 
 function openTutorial(startAt = 0) {
-  tutorialStep = Math.max(0, Math.min(TUTORIAL_STEPS.length - 1, startAt));
+  tutorialStep = Math.max(0, Math.min(activeTutorial.length - 1, startAt));
   renderTutorial();
   els.tutorial.classList.remove('hidden');
+}
+
+function openTutorialForVariant(id, startAt = 0) {
+  tutorialVariant = VARIANTS[id] ? id : 'classic';
+  activeTutorial = tutorialStepsForVariant(tutorialVariant);
+  openTutorial(startAt);
 }
 
 function closeTutorial() {
   els.tutorial.classList.add('hidden');
   try {
     localStorage.setItem('pokeke:tutorialSeen', '1');
+    if (tutorialVariant !== 'classic') {
+      localStorage.setItem(`pokeke:variantTutorial:${tutorialVariant}`, '1');
+    }
   } catch {
     /* ignore */
   }
 }
 
 function nextTutorial() {
-  if (tutorialStep >= TUTORIAL_STEPS.length - 1) closeTutorial();
+  if (tutorialStep >= activeTutorial.length - 1) closeTutorial();
   else {
     tutorialStep += 1;
     renderTutorial();
@@ -1435,8 +1884,10 @@ function backTutorial() {
 document.getElementById('tutorial-next').addEventListener('click', nextTutorial);
 document.getElementById('tutorial-back').addEventListener('click', backTutorial);
 document.getElementById('tutorial-skip').addEventListener('click', closeTutorial);
-document.getElementById('tutorial-link').addEventListener('click', () => openTutorial(0));
-document.getElementById('help-btn').addEventListener('click', () => openTutorial(0));
+document.getElementById('tutorial-link').addEventListener('click', () => openTutorialForVariant(settings.variant));
+document
+  .getElementById('help-btn')
+  .addEventListener('click', () => openTutorialForVariant(currentVariant));
 
 document.addEventListener('keydown', (event) => {
   const tutorialOpen =
@@ -1458,6 +1909,10 @@ document.addEventListener('keydown', (event) => {
   const layers = [
     [els.error, closeError],
     [els.updateOverlay, closeUpdateOverlay],
+    [els.draft, randomDraft],
+    [els.powerUse, () => els.powerUseCancel.click()],
+    [els.market, () => els.market.classList.add('hidden')],
+    [els.theme, () => els.theme.classList.add('hidden')],
     [els.tutorial, closeTutorial],
     [els.end, () => els.endMenu.click()],
     [els.lobby, () => document.getElementById('lobby-leave').click()],
@@ -1472,7 +1927,9 @@ document.addEventListener('keydown', (event) => {
 
 // ---------------------------------------------------------------- startup
 
+initTheme();
 initUpdates();
+refreshVariantNotes();
 setMode('solo');
 const restoredSession = trySavedReconnect();
 if (!restoredSession && !tutorialSeen()) openTutorial(0);
