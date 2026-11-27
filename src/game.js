@@ -133,6 +133,9 @@ export class PokerGame {
         hole: p.revealed || isMe ? p.hole.map((c) => ({ ...c })) : p.hole.map(() => null),
         handName: p.handResult ? p.handResult.name : null,
         handDetail: p.handResult ? p.handResult.description : null,
+        bestCards: p.handResult
+          ? p.handResult.cards.map((card) => ({ ...card }))
+          : null,
         won: p.won,
         isWinner: p.isWinner,
         powerCount: p.powers.length,
@@ -445,6 +448,16 @@ export class PokerGame {
     return card ? { ...card } : null;
   }
 
+  annotateCards(cards) {
+    return cards.map((card) => ({
+      ...card,
+      fromBoard: this.board.some(
+        (boardCard) =>
+          boardCard.r === card.r && boardCard.s === card.s && boardCard.joker === card.joker,
+      ),
+    }));
+  }
+
   evaluatePlayerHand(player) {
     return evaluateBest([...player.hole, ...this.board]);
   }
@@ -558,10 +571,19 @@ export class PokerGame {
         opponents.find((other) => other.id === payload.targetId) ||
         opponents[Math.floor(Math.random() * opponents.length)];
       if (!target.hole.length) return false;
-      const card = target.hole[Math.floor(Math.random() * target.hole.length)];
+      const known = target.hole.length + this.board.length;
+      const hand = known >= 5 ? this.evaluatePlayerHand(target) : null;
+      const cards = hand
+        ? this.annotateCards(hand.cards)
+        : [this.cloneCard(target.hole[Math.floor(Math.random() * target.hole.length)])];
       player.intel = {
         ...(player.intel || {}),
-        mirror: { playerId: target.id, name: target.name, card: this.cloneCard(card) },
+        mirror: {
+          playerId: target.id,
+          name: target.name,
+          cards,
+          handName: hand ? hand.name : null,
+        },
       };
     } else if (power.id === 'read') {
       const opponents = this.players.filter(
@@ -578,8 +600,8 @@ export class PokerGame {
         read: {
           playerId: target.id,
           name: target.name,
-          handName: hand ? hand.name : 'Pré-flop',
-          handDetail: hand ? hand.description : 'Ainda sem cinco cartas na mesa.',
+          cards: this.annotateCards(target.hole),
+          handName: hand ? hand.name : null,
         },
       };
     } else if (power.id === 'ghost') {

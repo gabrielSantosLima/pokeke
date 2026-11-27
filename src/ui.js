@@ -1,4 +1,4 @@
-import { SUITS, rankSymbol, formatChips, isJoker } from './cards.js';
+import { SUITS, rankSymbol, formatChips, isJoker, cardCode } from './cards.js';
 import { evaluateBest } from './evaluator.js';
 import { sfx } from './audio.js';
 import { REACTION_GROUPS } from './reactions.js';
@@ -50,6 +50,36 @@ function cardMarkup(card, index, noAnim = false) {
 
 function backMarkup(index) {
   return `<div class="card card--back" style="--i:${index}"></div>`;
+}
+
+function miniCardMarkup(card, index, { fromBoard = false, privateReveal = false } = {}) {
+  const suit = SUITS[card.s];
+  const classes = [
+    'mini-card',
+    suit.color === 'red' ? 'mini-card--red' : '',
+    isJoker(card) ? 'mini-card--joker' : '',
+    fromBoard ? 'mini-card--board' : '',
+    privateReveal ? 'mini-card--private' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return `<span class="${classes}" style="--i:${index}" title="${isJoker(card) ? 'Curinga' : `${rankSymbol(card.r)}${suit.symbol}`}">
+    <span class="mini-card__rank">${isJoker(card) ? '★' : rankSymbol(card.r)}</span>
+    <span class="mini-card__suit">${suit.symbol}</span>
+  </span>`;
+}
+
+function miniHandMarkup(cards, { board = [], privateReveal = false } = {}) {
+  if (!cards || !cards.length) return '';
+  const boardCodes = new Set(board.map((card) => cardCode(card)));
+  return `<span class="mini-hand${privateReveal ? ' mini-hand--private' : ''}">${cards
+    .map((card, index) =>
+      miniCardMarkup(card, index, {
+        fromBoard: card.fromBoard !== undefined ? card.fromBoard : boardCodes.has(cardCode(card)),
+        privateReveal,
+      }),
+    )
+    .join('')}</span>`;
 }
 
 const CHIP_STYLES = [
@@ -257,23 +287,39 @@ export class PokerUI {
 
     if (this.el.powerIntel) {
       const intel = (arcana && arcana.intel) || (state.market && state.market.intel) || null;
-      const lines = [];
+      const items = [];
       if (intel && intel.vision) {
-        lines.push(`👁️ Próxima carta: ${this.cardText(intel.vision)}`);
+        items.push(`<span class="power-intel__item">👁️ ${miniHandMarkup([intel.vision])}</span>`);
       }
       if (intel && Array.isArray(intel.deckPeek) && intel.deckPeek.length) {
-        lines.push(`🔮 Topo do baralho: ${intel.deckPeek.map((card) => this.cardText(card)).join(' · ')}`);
+        items.push(`<span class="power-intel__item">🔮 ${miniHandMarkup(intel.deckPeek)}</span>`);
       }
       if (intel && intel.mirror) {
-        lines.push(`🪞 ${intel.mirror.name}: ${this.cardText(intel.mirror.card)}`);
+        const cards = intel.mirror.cards || (intel.mirror.card ? [intel.mirror.card] : []);
+        const label = intel.mirror.handName
+          ? `<span class="mini-hand__label">${intel.mirror.handName}</span>`
+          : '';
+        items.push(
+          `<span class="power-intel__item" title="${intel.mirror.handName || ''}">🪞 ${intel.mirror.name} ${miniHandMarkup(cards, { privateReveal: true })}${label}</span>`,
+        );
       }
       if (intel && intel.read) {
-        lines.push(`🧠 ${intel.read.name}: ${intel.read.handName}`);
+        const cards = intel.read.cards || [];
+        const label = intel.read.handName
+          ? `<span class="mini-hand__label">${intel.read.handName}</span>`
+          : '';
+        items.push(
+          `<span class="power-intel__item">🧠 ${intel.read.name} ${miniHandMarkup(cards, { privateReveal: true })}${label}</span>`,
+        );
       }
-      if (arcana && arcana.ghost) lines.push('👻 Fantasma ativo');
-      if (arcana && arcana.tie) lines.push('🤝 Empate armado');
-      this.el.powerIntel.hidden = lines.length === 0;
-      this.el.powerIntel.innerHTML = lines.map((line) => `<span>${line}</span>`).join('');
+      if (arcana && arcana.ghost) {
+        items.push('<span class="power-intel__item">👻 Fantasma ativo</span>');
+      }
+      if (arcana && arcana.tie) {
+        items.push('<span class="power-intel__item">🤝 Empate armado</span>');
+      }
+      this.el.powerIntel.hidden = items.length === 0;
+      this.el.powerIntel.innerHTML = items.join('');
     }
 
     if (this.el.marketBtn) {
@@ -302,11 +348,7 @@ export class PokerUI {
     }
   }
 
-  cardText(card) {
-    if (!card) return '—';
-    if (isJoker(card)) return `★${SUITS[card.s].symbol}`;
-    return `${rankSymbol(card.r)}${SUITS[card.s].symbol}`;
-  }
+
 
   handleEvent(event) {
     if (!event || !event.state) return;
@@ -555,7 +597,12 @@ export class PokerUI {
       refs.betChips.innerHTML = betChipsMarkup(player.bet);
     }
     refs.bet.classList.toggle('show', player.bet > 0);
-    refs.handname.textContent = player.handDetail || '';
+    refs.handname.innerHTML = player.bestCards && player.bestCards.length
+      ? `${miniHandMarkup(player.bestCards)}${
+          player.handName ? `<span class="mini-hand__label">${player.handName}</span>` : ''
+        }`
+      : '';
+    refs.handname.title = player.handDetail || '';
     refs.win.textContent = player.won > 0 ? `+${formatChips(player.won)}` : '';
 
     const sig = `${player.hole.map((c) => (c ? `${c.r}${c.s}` : 'x')).join(',')}:${player.revealed ? 'r' : 'h'}`;
@@ -621,21 +668,21 @@ export class PokerUI {
   renderHandHint(state) {
     const human = state.players.find((p) => p.isMe);
     if (!human || !human.hole || human.hole.some((card) => !card)) {
-      this.el.handHint.textContent = '';
+      this.el.handHint.innerHTML = '';
       return;
     }
     const hole = human.hole.filter(Boolean);
     if (hole.length < 2) {
-      this.el.handHint.textContent = '';
+      this.el.handHint.innerHTML = '';
       return;
     }
-    if (state.board.length >= 3) {
+    if (state.board.length >= 3 && hole.length + state.board.length >= 5) {
       const result = evaluateBest([...hole, ...state.board]);
-      this.el.handHint.innerHTML = `Sua mão: <strong>${result.description}</strong>`;
+      this.el.handHint.innerHTML = `${miniHandMarkup(result.cards, { board: state.board })}<span class="hand-hint__label">${result.name}</span>`;
     } else {
-      const cardsText = hole.map((card) => `${rankSymbol(card.r)}${SUITS[card.s].symbol}`).join(' ');
-      this.el.handHint.innerHTML = `Sua mão: <strong>${cardsText}</strong>`;
+      this.el.handHint.innerHTML = miniHandMarkup(hole, { board: state.board });
     }
+    this.el.handHint.title = '';
   }
 
   // -------------------------------------------------------------- controls

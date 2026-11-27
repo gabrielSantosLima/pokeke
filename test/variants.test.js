@@ -137,6 +137,29 @@ await test('arcana powers are single-use and draw cards', () => {
   assert.equal(game.usePowerInternal(human, 'extra'), false);
 });
 
+await test('mirror and read reveal hands as cards', () => {
+  const game = makeGame('arcana', [
+    { id: 'human', name: 'Human', avatar: '🧑', isHuman: true, stack: 1000 },
+    { id: 'bot', name: 'Bot', avatar: '🦊', stack: 1000, strategy: { aggression: 0.5, tightness: 0.5, bluff: 0.1 } },
+  ]);
+  const human = game.players[0];
+  const bot = game.players[1];
+  human.hole = hand('As', 'Ks');
+  bot.hole = hand('Ah', 'Kh');
+  game.board = hand('Qs', 'Js', 'Ts', '2d', '3c');
+  game.street = 'river';
+  human.powers = [
+    POWER_CARDS.find((card) => card.id === 'mirror'),
+    POWER_CARDS.find((card) => card.id === 'read'),
+  ];
+  assert.equal(game.usePowerInternal(human, 'mirror', { targetId: 'bot' }), true);
+  assert.equal(human.intel.mirror.cards.length, 5);
+  assert.ok(human.intel.mirror.cards.some((card) => card.fromBoard));
+  assert.equal(game.usePowerInternal(human, 'read', { targetId: 'bot' }), true);
+  assert.equal(human.intel.read.cards.length, 2);
+  assert.ok(human.intel.read.handName);
+});
+
 await test('variant games complete hands with bots only', async () => {
   for (const variant of ['arcana', 'market', 'joker']) {
     const game = makeGame(

@@ -964,12 +964,24 @@ button {
   color: rgba(233, 245, 238, 0.8);
   background: rgba(4, 12, 9, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 2px 7px;
+  padding: 3px 4px;
   border-radius: 6px;
-  white-space: nowrap;
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+}
+
+.seat-handname .mini-card {
+  width: 15px;
+  height: 21px;
+  border-radius: 3px;
+}
+
+.seat-handname .mini-card__rank {
+  font-size: 6.5px;
+}
+
+.seat-handname .mini-card__suit {
+  font-size: 7px;
 }
 
 .seat[data-orient='top'] .seat-handname {
@@ -978,7 +990,9 @@ button {
 }
 
 .seat.is-showdown .seat-handname {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .seat-reaction {
@@ -3078,9 +3092,17 @@ input[type='range']:disabled {
     animation: none;
   }
 
-  .seat-handname {
-    font-size: 8px;
-    max-width: 76px;
+  .seat-handname .mini-card {
+    width: 13px;
+    height: 18px;
+  }
+
+  .seat-handname .mini-card__rank {
+    font-size: 5.5px;
+  }
+
+  .seat-handname .mini-card__suit {
+    font-size: 6px;
   }
 
   .seat-reaction {
@@ -3348,9 +3370,9 @@ input[type='range']:disabled {
   margin-left: -8px;
 }
 
-.seats[data-layout='row'] .seat-handname {
-  max-width: 84px;
-  font-size: 8px;
+.seats[data-layout='row'] .seat-handname .mini-card {
+  width: 12px;
+  height: 17px;
 }
 
 .seats[data-layout='row'] .seat[data-orient='top'] .seat-handname {
@@ -3488,7 +3510,7 @@ input[type='range']:disabled {
   min-width: 0;
 }
 
-.power-intel span {
+.power-intel > span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -4078,6 +4100,105 @@ input[type='range']:disabled {
   display: none;
 }
 
+/* ------------------------------------------------------ mini cards */
+
+.mini-hand {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.mini-card {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 29px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  border: 1px solid rgba(28, 20, 8, 0.3);
+  background: linear-gradient(158deg, #fffdf8 0%, #f1eadb 75%, #e3d9c4 100%);
+  color: #1a2430;
+  line-height: 1;
+  box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.65);
+}
+
+.mini-card__rank {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mini-card__suit {
+  margin-top: 1px;
+  font-size: 9px;
+}
+
+.mini-card--red {
+  color: var(--red);
+}
+
+.mini-card--board {
+  opacity: 0.56;
+}
+
+.mini-hand--private .mini-card {
+  opacity: 0.62;
+}
+
+.mini-card--joker {
+  color: #fff8e7;
+  border-color: rgba(255, 240, 196, 0.65);
+  background: conic-gradient(from 210deg, #2a1550, #0d5d63, #1e6b3f, #7a4a12, #2a1550);
+}
+
+.mini-card--joker .mini-card__rank {
+  color: #fff3c9;
+  text-shadow: 0 0 5px rgba(255, 220, 130, 0.8);
+}
+
+.hand-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 29px;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.hand-hint .mini-card {
+  width: 22px;
+  height: 30px;
+}
+
+.hand-hint__label,
+.mini-hand__label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hand-hint__label {
+  font-size: 9px;
+  color: #cfe3d7;
+}
+
+.seat-handname .mini-hand__label {
+  font-size: 6px;
+  letter-spacing: 0.04em;
+}
+
+.power-intel .mini-hand__label {
+  font-size: 7px;
+}
+
 /* ======================================================== themes */
 
 body[data-theme='neon'] {
@@ -4197,7 +4318,7 @@ body[data-theme='neon'] .power-chip {
   border-color: rgba(87, 242, 255, 0.38);
 }
 
-body[data-theme='neon'] .power-intel span {
+body[data-theme='neon'] .power-intel > span {
   border-color: rgba(87, 242, 255, 0.28);
   background: rgba(87, 242, 255, 0.08);
   color: #bdf7ff;
@@ -4364,7 +4485,7 @@ body[data-theme='papel'] .power-chip__icon {
   background: rgba(80, 55, 30, 0.1);
 }
 
-body[data-theme='papel'] .power-intel span {
+body[data-theme='papel'] .power-intel > span {
   border-color: rgba(80, 55, 30, 0.22);
   background: rgba(80, 55, 30, 0.06);
   color: #4b3826;
@@ -4479,6 +4600,43 @@ body[data-theme='minimal'] .mode-tabs button.selected,
 body[data-theme='minimal'] .segmented button.selected {
   background: linear-gradient(180deg, #e3c47c, #b48d47);
   color: #1b1508;
+}
+
+body[data-theme='neon'] .mini-card {
+  background: linear-gradient(158deg, #12243a 0%, #0a1526 75%, #07101d 100%);
+  color: #e8fcff;
+  border-color: rgba(87, 242, 255, 0.4);
+}
+
+body[data-theme='neon'] .mini-card--red {
+  color: #ff6ee2;
+}
+
+body[data-theme='papel'] .mini-card {
+  background: linear-gradient(158deg, #f4ead2 0%, #e3d3b2 75%, #cdbb95 100%);
+  color: #34281d;
+  border-color: rgba(80, 55, 30, 0.4);
+}
+
+body[data-theme='papel'] .mini-card--red {
+  color: #96382c;
+}
+
+body[data-theme='minimal'] .mini-card {
+  background: linear-gradient(158deg, #fbfaf6 0%, #f0ede5 75%, #e2ded3 100%);
+  color: #1f2823;
+}
+
+body[data-theme='minimal'] .mini-card--red {
+  color: #b8564d;
+}
+
+body[data-theme='neon'] .mini-card--joker,
+body[data-theme='papel'] .mini-card--joker,
+body[data-theme='minimal'] .mini-card--joker {
+  color: #fff8e7;
+  border-color: rgba(255, 240, 196, 0.65);
+  background: conic-gradient(from 210deg, #2a1550, #0d5d63, #1e6b3f, #7a4a12, #2a1550);
 }
 
 body[data-theme='neon'] .reaction-popover {

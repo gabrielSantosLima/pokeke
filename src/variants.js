@@ -82,7 +82,7 @@ export const POWER_CARDS = [
     kind: 'power',
     timing: 'turn',
     target: 'opponent',
-    description: 'Veja uma carta da mão de um oponente.',
+    description: 'Veja a melhor mão atual de um oponente, com as cartas usadas.',
     detail: 'Escolha o alvo no momento de usar.',
   },
   {
@@ -92,8 +92,8 @@ export const POWER_CARDS = [
     kind: 'power',
     timing: 'turn',
     target: 'opponent',
-    description: 'Descubra a força atual da mão de um oponente.',
-    detail: 'Mostra a categoria da mão, não as cartas.',
+    description: 'Veja as cartas fechadas de um oponente.',
+    detail: 'Mostra as cartas da mão dele, não o board.',
   },
   {
     id: 'ghost',
@@ -154,7 +154,7 @@ export const MARKET_ITEMS = [
     icon: '🪞',
     kind: 'market',
     costBB: 2,
-    description: 'Veja uma carta de um oponente aleatório.',
+    description: 'Veja a melhor mão atual de um oponente aleatório.',
   },
   {
     id: 'market-deck',

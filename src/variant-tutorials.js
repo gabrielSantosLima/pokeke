@@ -41,7 +41,7 @@ export const VARIANT_TUTORIALS = {
     {
       title: 'Poderes de informação',
       text:
-        'Visão mostra a próxima carta comunitária. Olho do Baralho mostra as 3 próximas cartas. Espelho revela uma carta de um oponente. Leitura revela a categoria atual da mão dele.',
+        'Visão mostra a próxima carta comunitária. Olho do Baralho mostra as 3 próximas cartas. Espelho revela a melhor mão atual de um oponente. Leitura revela as cartas fechadas dele.',
       visual: `
         <div class="tut-col">
           <div class="tut-variant-row">
