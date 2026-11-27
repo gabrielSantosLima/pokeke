@@ -178,6 +178,36 @@ await test('local room: discovery, join, game and rematch', async () => {
     assert.ok(hostStart.state.players.find((player) => player.id === hostId).isMe);
     assert.ok(guestStart.state.players.find((player) => player.id === guestId).isMe);
 
+    const cursorFrom = host.messages.length;
+    guest.send({ t: 'cursor', x: 0.25, y: 0.75 });
+    const cursor = await host.waitFor(
+      (message) => message.t === 'cursor' && message.playerId === guestId,
+      { fromIndex: cursorFrom },
+    );
+    assert.equal(cursor.x, 0.25);
+    assert.equal(cursor.y, 0.75);
+
+    const chipFrom = guest.messages.length;
+    host.send({
+      t: 'chip',
+      chip: {
+        x: 0.5,
+        y: 0.5,
+        size: 0.03,
+        color: 'gold',
+        vx: 0.1,
+        vy: -0.1,
+        angle: 1,
+        spin: 2,
+      },
+    });
+    const chip = await guest.waitFor(
+      (message) => message.t === 'chip',
+      { fromIndex: chipFrom },
+    );
+    assert.equal(chip.chip.color, 'gold');
+    assert.equal(chip.chip.x, 0.5);
+
     const hostDeal = await host.waitFor(
       (message) => message.t === 'event' && message.type === 'deal',
       { fromIndex: 0 },

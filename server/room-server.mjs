@@ -289,6 +289,58 @@ export class RoomManager {
       return;
     }
 
+    if (message.t === 'cursor') {
+      if (!room.game || room.status !== 'playing') return;
+      const now = Date.now();
+      if (client.lastCursorAt && now - client.lastCursorAt < 40) return;
+      const x = Number(message.x);
+      const y = Number(message.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      client.lastCursorAt = now;
+      this.broadcastToOthers(room, ws, {
+        t: 'cursor',
+        playerId: client.id,
+        name: client.name,
+        x: clamp(x, 0, 1),
+        y: clamp(y, 0, 1),
+      });
+      return;
+    }
+
+    if (message.t === 'chip') {
+      if (!room.game || room.status !== 'playing') return;
+      const now = Date.now();
+      if (client.lastChipAt && now - client.lastChipAt < 120) return;
+      const chip = message.chip;
+      if (!chip || typeof chip !== 'object') return;
+      const x = Number(chip.x);
+      const y = Number(chip.y);
+      const size = Number(chip.size);
+      const vx = Number(chip.vx);
+      const vy = Number(chip.vy);
+      const angle = Number(chip.angle);
+      const spin = Number(chip.spin);
+      if (![x, y, size, vx, vy, angle, spin].every(Number.isFinite)) return;
+      const color = ['white', 'red', 'green', 'black', 'purple', 'gold'].includes(chip.color)
+        ? chip.color
+        : 'red';
+      client.lastChipAt = now;
+      this.broadcastToOthers(room, ws, {
+        t: 'chip',
+        chip: {
+          x: clamp(x, 0, 1),
+          y: clamp(y, 0, 1),
+          size: clamp(size, 0.01, 0.06),
+          color,
+          vx: clamp(vx, -0.5, 0.5),
+          vy: clamp(vy, -0.5, 0.5),
+          angle,
+          spin: clamp(spin, -10, 10),
+        },
+      });
+      return;
+    }
+
     if (message.t === 'start') {
       if (!client.isHost) {
         this.send(ws, { t: 'error', message: 'Apenas o anfitrião pode iniciar.' });
@@ -468,6 +520,12 @@ export class RoomManager {
       ws.send(JSON.stringify(payload));
     } catch {
       /* ignore */
+    }
+  }
+
+  broadcastToOthers(room, sender, payload) {
+    for (const [ws] of room.clients) {
+      if (ws !== sender) this.send(ws, payload);
     }
   }
 

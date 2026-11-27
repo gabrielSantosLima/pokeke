@@ -8,6 +8,12 @@ import { RemoteGame } from './remote-game.js';
 import { TUTORIAL_STEPS } from './tutorial.js';
 import { VARIANTS, POWER_BY_ID } from './variants.js';
 import { VARIANT_TUTORIALS } from './variant-tutorials.js';
+import {
+  DEFAULT_CURSOR_COLOR,
+  TableEffects,
+  createChipPayload,
+  cursorColorFor,
+} from './table-effects.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const desktop = window.pokekeDesktop || null;
@@ -16,6 +22,13 @@ const ui = new PokerUI(document);
 ui.onPower = openPowerModal;
 ui.onMarket = openMarket;
 ui.onDraft = syncDraftOverlay;
+
+const tableEffects = new TableEffects({
+  table: document.getElementById('table'),
+  chipLayer: document.getElementById('chip-layer'),
+  cursorLayer: document.getElementById('cursor-layer'),
+  localCursorLayer: document.getElementById('local-cursor-layer'),
+});
 
 const settings = {
   bots: 3,
@@ -605,6 +618,68 @@ els.variantNext.addEventListener('click', () => {
 
 
 
+let lastCursorSent = 0;
+
+function canShareCursor() {
+  return Boolean(
+    net &&
+      net.joined &&
+      net.inGame &&
+      net.ws &&
+      net.ws.readyState === WebSocket.OPEN,
+  );
+}
+
+function sendCursor(x, y) {
+  if (!canShareCursor()) return;
+  const now = performance.now();
+  if (now - lastCursorSent < 50) return;
+  lastCursorSent = now;
+  try {
+    net.ws.send(
+      JSON.stringify({
+        t: 'cursor',
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y)),
+      }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+document.addEventListener('pointermove', (event) => {
+  tableEffects.updateLocalPointer(event.clientX, event.clientY);
+  sendCursor(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
+});
+
+document.addEventListener('pointerleave', () => tableEffects.hideLocalCursor());
+window.addEventListener('blur', () => tableEffects.hideLocalCursor());
+
+document.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  lastCursorSent = 0;
+  sendCursor(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
+});
+
+document.addEventListener('contextmenu', (event) => {
+  event.preventDefault();
+  if (!currentGame && !(net && net.remoteGame)) return;
+  if (tableEffects.isUiPoint(event.clientX, event.clientY)) return;
+  const payload = createChipPayload(
+    event.clientX / window.innerWidth,
+    event.clientY / window.innerHeight,
+  );
+  tableEffects.spawnChip(payload);
+  if (net && net.inGame && net.ws && net.ws.readyState === WebSocket.OPEN) {
+    try {
+      net.ws.send(JSON.stringify({ t: 'chip', chip: payload }));
+    } catch {
+      /* ignore */
+    }
+  }
+});
+
 function money(value) {
   return formatChips(value);
 }
@@ -733,6 +808,10 @@ function showStartMenu() {
     currentGame = null;
   }
   disconnectNet(true);
+  tableEffects.setCursorsEnabled(false);
+  tableEffects.clearCursors();
+  tableEffects.clearChips();
+  tableEffects.setLocalCursorColor(DEFAULT_CURSOR_COLOR);
   hideOverlays();
   currentVariant = settings.variant;
   refreshVariantNotes();
@@ -803,6 +882,10 @@ async function startGame(config) {
 
   if (currentGame) currentGame.abort();
   disconnectNet(true);
+  tableEffects.setCursorsEnabled(false);
+  tableEffects.clearCursors();
+  tableEffects.clearChips();
+  tableEffects.setLocalCursorColor(cursorColorFor('human'));
 
   const [smallBlind, bigBlind] = parseBlinds(config.blinds || settings.blinds);
   const players = buildPlayers(config);
@@ -1156,6 +1239,9 @@ function disconnectNet(notify = true) {
   const session = net;
   net = null;
   setNetUi(false);
+  tableEffects.setCursorsEnabled(false);
+  tableEffects.clearCursors();
+  tableEffects.setLocalCursorColor(DEFAULT_CURSOR_COLOR);
   cancelReconnectAttempts();
   hideReconnectOverlay();
   clearSavedReconnect();
@@ -1181,6 +1267,8 @@ function startReconnect(session) {
   const run = ++reconnectRun;
   net = session;
   setNetUi(true);
+  tableEffects.setCursorsEnabled(false);
+  tableEffects.clearCursors();
   els.start.classList.add('hidden');
   els.lobby.classList.add('hidden');
   els.end.classList.add('hidden');
@@ -1349,6 +1437,10 @@ function adoptRejoined(session, socket, message) {
     session.remoteGame = remote;
     session.inGame = true;
     session.awaitingRematch = false;
+    tableEffects.setCursorsEnabled(true);
+    tableEffects.clearCursors();
+    tableEffects.clearChips();
+    tableEffects.setLocalCursorColor(cursorColorFor(session.viewerId || 'player'));
     hideOverlays();
     initAudio();
     ui.bindGame(remote, session.viewerId);
@@ -1413,6 +1505,21 @@ els.reconnectCancel.addEventListener('click', () => {
 function handleNetMessage(session, message) {
   if (!message || typeof message.t !== 'string') return;
 
+  if (message.t === 'cursor') {
+    tableEffects.updateCursor({
+      id: message.playerId,
+      name: message.name,
+      x: message.x,
+      y: message.y,
+    });
+    return;
+  }
+
+  if (message.t === 'chip') {
+    tableEffects.spawnChip(message.chip || {});
+    return;
+  }
+
   if (message.t === 'joined') {
     session.viewerId = message.playerId;
     session.isHost = !!message.admin;
@@ -1462,6 +1569,8 @@ function handleNetMessage(session, message) {
       }
       if (net === session) net = null;
       setNetUi(false);
+      tableEffects.setCursorsEnabled(false);
+      tableEffects.clearCursors();
       setMode('join');
       showError({
         title: 'Não foi possível entrar na sala',
@@ -1486,6 +1595,8 @@ function handleNetMessage(session, message) {
     cancelReconnectAttempts();
     clearSavedReconnect();
     setNetUi(false);
+    tableEffects.setCursorsEnabled(false);
+    tableEffects.clearCursors();
     showToast(message.message || 'A sala foi encerrada.');
     els.lobby.classList.add('hidden');
     els.end.classList.add('hidden');
@@ -1496,7 +1607,15 @@ function handleNetMessage(session, message) {
 }
 
 function handleNetEvent(session, message) {
+  if (message.type === 'player-left' && message.playerId) {
+    tableEffects.removeCursor(message.playerId);
+  }
+
   if (message.type === 'game-start') {
+    tableEffects.setCursorsEnabled(true);
+    tableEffects.clearCursors();
+    tableEffects.clearChips();
+    tableEffects.setLocalCursorColor(cursorColorFor(session.viewerId || 'player'));
     const remote = new RemoteGame({
       viewerId: session.viewerId,
       send: (payload) => {
@@ -1523,6 +1642,8 @@ function handleNetEvent(session, message) {
 
   if (message.type === 'game-over') {
     session.inGame = false;
+    tableEffects.setCursorsEnabled(false);
+    tableEffects.clearCursors();
     showNetEnd(session, message);
   }
 }
@@ -2008,6 +2129,7 @@ if (new URLSearchParams(window.location.search).has('debug')) {
       return net;
     },
     ui,
+    tableEffects,
     showEnd,
     startGame,
     connectToRoom,
