@@ -51,17 +51,36 @@ export function rankName(rank) {
 }
 
 export function cardCode(card) {
+  if (card.joker) return `JOKER-${card.s}`;
   return `${rankSymbol(card.r)}${card.s}`;
 }
 
-export function createDeck() {
+export function createDeck({ jokers = false } = {}) {
   const deck = [];
   for (const suit of SUIT_KEYS) {
     for (let rank = 2; rank <= 14; rank += 1) {
       deck.push({ r: rank, s: suit });
     }
   }
+  if (jokers) {
+    for (const suit of SUIT_KEYS) {
+      deck.push({ r: 0, s: suit, joker: true });
+    }
+  }
   return deck;
+}
+
+export function isJoker(card) {
+  return Boolean(card && card.joker);
+}
+
+export function normalizeJoker(card) {
+  if (!isJoker(card)) return card;
+  return { r: 14, s: card.s };
+}
+
+export function jokerLabel(card) {
+  return `Curinga de ${SUITS[card.s]?.name || 'naipe'}`;
 }
 
 /** Fisher-Yates, in place. */

@@ -25,7 +25,7 @@
     "dist:prod": "electron-builder --config electron-builder.yml",
     "dist:win": "electron-builder --win --config electron-builder.yml",
     "dist:linux": "electron-builder --linux --config electron-builder.yml",
-    "test": "node test/engine.test.js && node test/room.test.js && node test/update.test.js && node test/reactions.test.js"
+    "test": "node test/engine.test.js && node test/room.test.js && node test/update.test.js && node test/reactions.test.js && node test/variants.test.js"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",

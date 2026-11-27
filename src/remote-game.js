@@ -20,4 +20,22 @@ export class RemoteGame {
     this.send({ t: 'reaction', text: String(text).slice(0, 40) });
     return true;
   }
+
+  submitPower(payload) {
+    if (!payload || !payload.powerId) return false;
+    this.send({ t: 'power', power: payload });
+    return true;
+  }
+
+  submitPowerDraft(picks) {
+    if (!Array.isArray(picks) || picks.length !== 2) return false;
+    this.send({ t: 'power-draft', picks });
+    return true;
+  }
+
+  submitMarket(itemId) {
+    if (!itemId) return false;
+    this.send({ t: 'market', itemId });
+    return true;
+  }
 }

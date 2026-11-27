@@ -1,7 +1,15 @@
-import { createDeck, shuffleInPlace, formatChips } from './cards.js';
-import { evaluate } from './evaluator.js';
+import { createDeck, shuffleInPlace, formatChips, normalizeJoker } from './cards.js';
+import { evaluateBest } from './evaluator.js';
 import { decideBotAction } from './ai.js';
 import { REACTION_COOLDOWN_MS, pickBotReaction } from './reactions.js';
+import {
+  MARKET_BY_ID,
+  POWER_BY_ID,
+  randomMarketOffer,
+  randomPowerOffer,
+  pickBotPowers,
+  VARIANTS,
+} from './variants.js';
 
 export class GameAborted extends Error {
   constructor() {
@@ -25,6 +33,7 @@ export class PokerGame {
     this.botDelayMax = options.botDelayMax ?? 850;
     this.difficulty = options.difficulty || 'normal';
     this.pauseScale = options.pauseScale ?? 1;
+    this.variant = VARIANTS[options.variant] ? options.variant : 'classic';
 
     this.players = options.players.map((p, index) => ({
       id: p.id || `p${index}`,
@@ -45,6 +54,14 @@ export class PokerGame {
       handResult: null,
       won: 0,
       isWinner: false,
+      powers: [],
+      powerOffer: [],
+      powerDraft: null,
+      intel: null,
+      ghost: false,
+      tie: false,
+      marketOffers: [],
+      marketBought: false,
     }));
 
     this.dealerIndex = -1;
@@ -67,9 +84,11 @@ export class PokerGame {
     this.viewerId = options.viewerId || null;
     this.hadHumans = this.players.some((player) => player.isHuman);
     this.actionResolvers = new Map();
+    this.powerResolvers = new Map();
     this.lastReactionAt = new Map();
     this.botReactionHand = new Map();
     this.reactionSeq = 0;
+    this.powerSeq = 0;
   }
 
   // ---------------------------------------------------------------- events
@@ -116,6 +135,8 @@ export class PokerGame {
         handDetail: p.handResult ? p.handResult.description : null,
         won: p.won,
         isWinner: p.isWinner,
+        powerCount: p.powers.length,
+        marketBought: p.marketBought,
       };
     });
 
@@ -129,7 +150,48 @@ export class PokerGame {
       }
     }
 
+    const viewerPlayer = viewerId ? this.players.find((p) => p.id === viewerId) : null;
+    const arcana =
+      this.variant === 'arcana'
+        ? {
+            draft:
+              viewerPlayer && viewerPlayer.powerDraft
+                ? {
+                    offer: viewerPlayer.powerOffer.map((card) => ({ ...card })),
+                    picks: viewerPlayer.powerDraft.picks.slice(),
+                  }
+                : null,
+            powers: viewerPlayer ? viewerPlayer.powers.map((card) => ({ ...card })) : [],
+            intel: viewerPlayer && viewerPlayer.intel ? viewerPlayer.intel : null,
+            ghost: Boolean(viewerPlayer && viewerPlayer.ghost),
+            tie: Boolean(viewerPlayer && viewerPlayer.tie),
+          }
+        : null;
+    const market =
+      this.variant === 'market'
+        ? {
+            offers:
+              viewerPlayer && viewerPlayer.marketOffers
+                ? viewerPlayer.marketOffers
+                    .map((id) => MARKET_BY_ID.get(id))
+                    .filter(Boolean)
+                    .map((item) => ({ ...item }))
+                : [],
+            bought: Boolean(viewerPlayer && viewerPlayer.marketBought),
+            intel: viewerPlayer && viewerPlayer.intel ? viewerPlayer.intel : null,
+            canBuy: Boolean(
+              viewerPlayer &&
+                this.activePlayerId === viewerPlayer.id &&
+                !viewerPlayer.folded &&
+                !viewerPlayer.marketBought,
+            ),
+          }
+        : null;
+
     return {
+      variant: this.variant,
+      arcana,
+      market,
       handNumber: this.handNumber,
       street: this.street,
       board: this.board.map((c) => ({ ...c })),
@@ -171,6 +233,8 @@ export class PokerGame {
     this.aborted = true;
     for (const resolve of this.actionResolvers.values()) resolve(null);
     this.actionResolvers.clear();
+    for (const resolve of this.powerResolvers.values()) resolve(null);
+    this.powerResolvers.clear();
   }
 
   nextIndexWithChips(from) {
@@ -258,7 +322,7 @@ export class PokerGame {
 
     this.handNumber += 1;
     this.board = [];
-    this.deck = shuffleInPlace(createDeck());
+    this.deck = shuffleInPlace(createDeck({ jokers: this.variant === 'joker' }));
     this.street = 'preflop';
     this.currentBet = 0;
     this.minRaise = this.bigBlind;
@@ -283,6 +347,14 @@ export class PokerGame {
       p.handResult = null;
       p.won = 0;
       p.isWinner = false;
+      p.powers = [];
+      p.powerOffer = [];
+      p.powerDraft = null;
+      p.intel = null;
+      p.ghost = false;
+      p.tie = false;
+      p.marketOffers = [];
+      p.marketBought = false;
     }
 
     this.dealerIndex = this.nextIndexWithChips(this.dealerIndex + 1);
@@ -321,8 +393,17 @@ export class PokerGame {
         this.players[index].hole.push(this.deck.pop());
       }
     }
+    if (this.variant === 'market') {
+      for (const index of dealOrder) {
+        this.players[index].marketOffers = randomMarketOffer(3).map((item) => item.id);
+      }
+    }
     this.emit('deal');
     await this.pause(420);
+
+    if (this.variant === 'arcana') {
+      await this.runArcanaDraft(dealOrder);
+    }
 
     await this.bettingRound(firstIndex);
 
@@ -346,6 +427,7 @@ export class PokerGame {
       this.deck.pop(); // burn
       for (let k = 0; k < cardCount; k += 1) this.board.push(this.deck.pop());
       this.street = streetName;
+      if (this.variant === 'arcana' && streetName === 'river') this.grantRiverPowers();
       this.emit('street');
       await this.pause(560);
 
@@ -355,6 +437,252 @@ export class PokerGame {
     }
 
     return this.finishHand();
+  }
+
+  // ------------------------------------------------------------- variants
+
+  cloneCard(card) {
+    return card ? { ...card } : null;
+  }
+
+  evaluatePlayerHand(player) {
+    return evaluateBest([...player.hole, ...this.board]);
+  }
+
+  async runArcanaDraft(dealOrder) {
+    const live = dealOrder.map((index) => this.players[index]).filter((p) => !p.out);
+    for (const player of live) {
+      player.powerOffer = randomPowerOffer(4);
+      player.powers = [];
+      player.powerDraft = { offer: player.powerOffer.map((card) => card.id), picks: [] };
+      player.intel = null;
+      player.ghost = false;
+      player.tie = false;
+    }
+
+    for (const player of live.filter((p) => !p.isHuman)) {
+      player.powers = pickBotPowers(player.powerOffer);
+      player.powerDraft = null;
+    }
+
+    this.emit('arcana-draft');
+    const humans = live.filter((player) => player.isHuman && player.powerDraft);
+    if (humans.length) {
+      const waits = humans.map(
+        (player) =>
+          new Promise((resolve) => {
+            this.powerResolvers.set(player.id, resolve);
+          }),
+      );
+      this.emit('arcana-draft');
+      await Promise.all(waits);
+      this.throwIfAborted();
+    }
+
+    for (const player of live) player.powerDraft = null;
+    if (live.length) this.pushLog('As cartas de poder foram escolhidas.', 'power');
+    this.emit('arcana-ready');
+  }
+
+  submitPowerDraft(playerId, picks) {
+    const player = this.players.find((p) => p.id === playerId);
+    if (!player || !player.powerDraft) return false;
+    const unique = [...new Set(Array.isArray(picks) ? picks : [])];
+    if (unique.length !== 2) return false;
+    if (!unique.every((id) => player.powerDraft.offer.includes(id))) return false;
+    player.powers = unique.map((id) => POWER_BY_ID.get(id)).filter(Boolean);
+    player.powerDraft = null;
+    const resolve = this.powerResolvers.get(playerId);
+    if (resolve) {
+      this.powerResolvers.delete(playerId);
+      resolve(true);
+    }
+    this.emit('arcana-draft', { playerId });
+    return true;
+  }
+
+  grantRiverPowers() {
+    for (const player of this.players) {
+      if (player.folded || player.out) continue;
+      const [card] = randomPowerOffer(1);
+      if (card) player.powers.push(card);
+    }
+    this.pushLog('O river distribuiu uma carta de poder para cada jogador.', 'power');
+  }
+
+  canUsePower(player, power) {
+    if (!power || player.folded || player.out) return false;
+    if (this.street === 'hand-end') return false;
+    if (power.timing === 'preflop' && this.street !== 'preflop') return false;
+    if (power.id === 'swap' && this.deck.length === 0) return false;
+    if (power.id === 'extra' && player.hole.length >= 3) return false;
+    if (power.id === 'vision' && this.deck.length === 0) return false;
+    if (power.id === 'deck-peek' && this.deck.length === 0) return false;
+    if (power.target === 'opponent') {
+      return this.players.some(
+        (other) => other.id !== player.id && !other.folded && !other.out,
+      );
+    }
+    return true;
+  }
+
+  applyPowerEffect(player, power, payload = {}) {
+    if (!power || !this.canUsePower(player, power)) return false;
+
+    if (power.id === 'vision') {
+      player.intel = {
+        ...(player.intel || {}),
+        vision: this.cloneCard(this.deck[this.deck.length - 1]),
+      };
+    } else if (power.id === 'deck-peek') {
+      player.intel = {
+        ...(player.intel || {}),
+        deckPeek: this.deck.slice(-3).reverse().map((card) => this.cloneCard(card)),
+      };
+    } else if (power.id === 'swap') {
+      if (this.deck.length === 0) return false;
+      let cardIndex = Number(payload.cardIndex);
+      if (!Number.isInteger(cardIndex) || cardIndex < 0 || cardIndex >= player.hole.length) {
+        cardIndex = Math.floor(Math.random() * player.hole.length);
+      }
+      player.hole[cardIndex] = this.deck.pop();
+    } else if (power.id === 'extra') {
+      if (player.hole.length >= 3 || this.deck.length === 0) return false;
+      player.hole.push(this.deck.pop());
+    } else if (power.id === 'mirror') {
+      const opponents = this.players.filter(
+        (other) => other.id !== player.id && !other.folded && !other.out,
+      );
+      if (!opponents.length) return false;
+      const target =
+        opponents.find((other) => other.id === payload.targetId) ||
+        opponents[Math.floor(Math.random() * opponents.length)];
+      if (!target.hole.length) return false;
+      const card = target.hole[Math.floor(Math.random() * target.hole.length)];
+      player.intel = {
+        ...(player.intel || {}),
+        mirror: { playerId: target.id, name: target.name, card: this.cloneCard(card) },
+      };
+    } else if (power.id === 'read') {
+      const opponents = this.players.filter(
+        (other) => other.id !== player.id && !other.folded && !other.out,
+      );
+      if (!opponents.length) return false;
+      const target =
+        opponents.find((other) => other.id === payload.targetId) ||
+        opponents[Math.floor(Math.random() * opponents.length)];
+      const known = target.hole.length + this.board.length;
+      const hand = known >= 5 ? this.evaluatePlayerHand(target) : null;
+      player.intel = {
+        ...(player.intel || {}),
+        read: {
+          playerId: target.id,
+          name: target.name,
+          handName: hand ? hand.name : 'Pré-flop',
+          handDetail: hand ? hand.description : 'Ainda sem cinco cartas na mesa.',
+        },
+      };
+    } else if (power.id === 'ghost') {
+      player.ghost = true;
+    } else if (power.id === 'tie') {
+      player.tie = true;
+    } else {
+      return false;
+    }
+
+    return true;
+  }
+
+  usePowerInternal(player, powerId, payload = {}) {
+    const index = player.powers.findIndex((card) => card.id === powerId);
+    if (index < 0) return false;
+    const power = player.powers[index];
+    if (!this.applyPowerEffect(player, power, payload)) return false;
+    player.powers.splice(index, 1);
+    this.pushLog(`${player.name} usou uma carta de poder`, 'power');
+    if (player.isHuman && this.activePlayerId === player.id) {
+      this.pendingOptions = this.getOptions(player);
+    }
+    this.emit('power', { playerId: player.id });
+    return true;
+  }
+
+  submitPower(playerId, maybePayload) {
+    let target = playerId;
+    let payload = maybePayload;
+    if (playerId && typeof playerId === 'object') {
+      payload = playerId;
+      target = this.activePlayerId;
+    }
+    if (!target) return false;
+    const player = this.players.find((p) => p.id === target);
+    if (!player || player.folded || player.out) return false;
+    const powerId = payload && payload.powerId;
+    if (!powerId) return false;
+    return this.usePowerInternal(player, powerId, payload || {});
+  }
+
+  submitMarket(playerId, itemId) {
+    const player = this.players.find((p) => p.id === playerId);
+    if (!player || this.variant !== 'market') return false;
+    if (this.activePlayerId !== player.id || player.folded || player.marketBought) return false;
+    const item = player.marketOffers
+      .map((id) => MARKET_BY_ID.get(id))
+      .find((entry) => entry && entry.id === itemId);
+    if (!item) return false;
+    const cost = item.costBB * this.bigBlind;
+    if (player.stack <= cost) return false;
+    const power = POWER_BY_ID.get(item.powerId);
+    const usablePower = power ? { ...power, timing: 'turn' } : null;
+    if (!usablePower || !this.canUsePower(player, usablePower)) return false;
+    player.stack -= cost;
+    player.committed += cost;
+    player.marketBought = true;
+    const applied = this.applyPowerEffect(player, usablePower, {});
+    if (!applied) {
+      player.stack += cost;
+      player.committed -= cost;
+      player.marketBought = false;
+      return false;
+    }
+    this.pushLog(`${player.name} fez uma compra no mercado`, 'market');
+    if (player.isHuman && this.activePlayerId === player.id) {
+      this.pendingOptions = this.getOptions(player);
+    }
+    this.emit('market', { playerId: player.id, itemId: item.id });
+    return true;
+  }
+
+  maybeBotUsePower(player, options) {
+    if (this.variant !== 'arcana' || !player.powers.length) return;
+    const usable = player.powers.filter((power) => this.canUsePower(player, power));
+    if (!usable.length) return;
+    const priority = ['extra', 'swap', 'vision', 'mirror', 'read', 'deck-peek', 'ghost', 'tie'];
+    usable.sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
+    const power = usable[0];
+    let chance = 0.42;
+    if (power.id === 'extra' || power.id === 'swap') chance = this.street === 'preflop' ? 0.65 : 0;
+    if (power.id === 'ghost') chance = options.toCall > player.stack * 0.22 ? 0.7 : 0.12;
+    if (power.id === 'tie') chance = this.street === 'river' ? 0.6 : 0.1;
+    if (power.id === 'read') chance = 0.3;
+    if (Math.random() > chance) return;
+    this.usePowerInternal(player, power.id, {});
+  }
+
+  maybeBotBuyMarket(player) {
+    if (this.variant !== 'market' || player.marketBought || !player.marketOffers.length) return;
+    const options = player.marketOffers
+      .map((id) => MARKET_BY_ID.get(id))
+      .filter((item) => item && player.stack > item.costBB * this.bigBlind + this.bigBlind);
+    if (!options.length) return;
+    const preferred = options
+      .slice()
+      .sort((a, b) => {
+        const weight = { extra: 8, swap: 7, mirror: 5, vision: 4, 'deck-peek': 3 };
+        return (weight[b.powerId] || 0) - (weight[a.powerId] || 0);
+      });
+    if (Math.random() > 0.45) return;
+    this.submitMarket(player.id, preferred[0].id);
   }
 
   // -------------------------------------------------------------- actions
@@ -383,9 +711,14 @@ export class PokerGame {
   }
 
   buildBotContext(player, options) {
+    const normalizedHole = player.hole.map((card) => normalizeJoker(card));
+    const hole =
+      normalizedHole.length > 2
+        ? normalizedHole.slice().sort((a, b) => b.r - a.r).slice(0, 2)
+        : normalizedHole;
     return {
-      hole: player.hole,
-      board: this.board,
+      hole,
+      board: this.board.map((card) => normalizeJoker(card)),
       street: this.street,
       pot: options.pot,
       toCall: options.toCall,
@@ -419,7 +752,10 @@ export class PokerGame {
       this.throwIfAborted();
     } else {
       await this.pause(randBetween(this.botDelayMin, this.botDelayMax));
-      action = decideBotAction(this.buildBotContext(player, options));
+      this.maybeBotBuyMarket(player);
+      this.maybeBotUsePower(player, options);
+      const refreshed = this.getOptions(player);
+      action = decideBotAction(this.buildBotContext(player, refreshed));
     }
 
     this.pendingOptions = null;
@@ -507,6 +843,16 @@ export class PokerGame {
       player.strategy = { aggression: 0.5, tightness: 0.5, bluff: 0.1, style: 'Ausente' };
     }
     this.pushLog(`${player.name} saiu da mesa`, 'info');
+    if (player.powerDraft) {
+      player.powers = pickBotPowers(player.powerOffer);
+      player.powerDraft = null;
+      const resolvePower = this.powerResolvers.get(playerId);
+      if (resolvePower) {
+        this.powerResolvers.delete(playerId);
+        resolvePower(true);
+      }
+      this.emit('arcana-draft', { playerId });
+    }
     const pending = this.actionResolvers.get(playerId);
     if (pending) {
       this.actionResolvers.delete(playerId);
@@ -542,6 +888,13 @@ export class PokerGame {
     }
 
     if (type === 'fold') {
+      if (player.ghost && player.committed > 0) {
+        const refund = Math.floor(player.committed * 0.5);
+        player.stack += refund;
+        player.committed -= refund;
+        player.bet = Math.max(0, player.bet - refund);
+        player.ghost = false;
+      }
       player.folded = true;
       player.lastAction = 'fold';
     } else if (type === 'check') {
@@ -626,7 +979,7 @@ export class PokerGame {
 
   awardPot(live, showdown) {
     for (const p of live) {
-      if (showdown && !p.handResult) p.handResult = evaluate([...p.hole, ...this.board]);
+      if (showdown && !p.handResult) p.handResult = this.evaluatePlayerHand(p);
     }
 
     const totalPot = this.totalPot();
@@ -647,6 +1000,10 @@ export class PokerGame {
         }
       }
       if (!winners.length) winners = [live[0] || this.players.find((p) => !p.folded)];
+      if (winners.length > 1) {
+        const tiebreakers = winners.filter((winner) => winner.tie);
+        if (tiebreakers.length) winners = tiebreakers;
+      }
       winners.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
 
       const share = Math.floor(pot.amount / winners.length);
@@ -709,7 +1066,7 @@ export class PokerGame {
       showdown = true;
       for (const p of live) {
         p.revealed = true;
-        p.handResult = evaluate([...p.hole, ...this.board]);
+        p.handResult = this.evaluatePlayerHand(p);
       }
       this.street = 'showdown';
       this.emit('showdown');

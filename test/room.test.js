@@ -100,6 +100,7 @@ await test('local room: discovery, join, game and rematch', async () => {
     stack: 100,
     difficulty: 'easy',
     speed: 'calm',
+    variant: 'joker',
   });
 
   let host = null;
@@ -133,6 +134,7 @@ await test('local room: discovery, join, game and rematch', async () => {
     );
     assert.equal(lobby.lobby.capacity, 4);
     assert.equal(lobby.lobby.bots, 2);
+    assert.equal(lobby.lobby.config.variant, 'joker');
 
     const hostId = hostJoined.playerId;
     const guestId = guestJoined.playerId;
@@ -169,6 +171,8 @@ await test('local room: discovery, join, game and rematch', async () => {
       { fromIndex: guestStartFrom },
     );
     assert.ok(hostStart.state && guestStart.state);
+    assert.equal(hostStart.state.variant, 'joker');
+    assert.equal(hostStart.config.variant, 'joker');
     assert.equal(hostStart.state.players[0].id, hostId, 'the host should be seated at the bottom');
     assert.equal(guestStart.state.players[0].id, guestId, 'the guest should be seated at the bottom');
     assert.ok(hostStart.state.players.find((player) => player.id === hostId).isMe);

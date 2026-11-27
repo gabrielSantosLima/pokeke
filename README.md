@@ -23,12 +23,22 @@ can start with one human or six.
   through river, all-ins and side pots.
 - **Bots with personality** — Monte Carlo equity estimates, aggression,
   tightness and bluff profiles.
+- **Four ways to play** — classic Texas Hold'em plus three variants:
+  - **Mesa Arcana** — draft 2 secret power cards per hand, use each once, and
+    receive a bonus power when the river is revealed.
+  - **Mercado** — three secret random offers per hand; buy one card with chips,
+    and the cost goes into the pot.
+  - **Mesa do Curinga** — one suit joker per suit; each joker can become any
+    rank of its own suit.
+- **Four visual themes** — Gema Arcana, Neon de Mesa, Papel Antigo and Minimal
+  Premium change the table, modals, chips and playing cards.
 - **Local-network multiplayer** — create a room, discover rooms over UDP, join
   over WebSocket; bots fill empty seats.
 - **Reconnect support** — a dropped player keeps their seat for 90 seconds while
   the app reconnects automatically.
 - **First-run tutorial** — six steps covering hands, streets, actions, blinds,
-  all-ins and LAN play, reopenable from the `?` button.
+  all-ins and LAN play, plus a dedicated tutorial for every variant. Reopen any
+  tutorial from the `?` button.
 - **Emoji reactions** — a large emoji picker in the action bar; bots react to
   folds, raises, all-ins, wins and losses.
 - **Adjustable pace and difficulty** — Calm, Normal and Fast table speeds plus
@@ -111,7 +121,9 @@ npm start
 
 In the desktop app, choose **Criar sala** to host, then share the shown IP:port
 or let others use **Entrar em sala → Procurar salas**. The host starts the
-match; bots fill the remaining seats.
+match; bots fill the remaining seats. In solo or host mode, pick the variant
+before starting and use the 🎨 button to switch themes. Each variant has its own
+tutorial, available from the menu and from the `?` button.
 
 ## License
 

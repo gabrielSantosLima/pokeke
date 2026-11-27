@@ -1,4 +1,4 @@
-import { RANK_NAMES, RANK_PLURALS, SUIT_INDEX } from './cards.js';
+import { RANK_NAMES, RANK_PLURALS, SUIT_INDEX, isJoker } from './cards.js';
 
 export const CATEGORY_NAMES = [
   'Carta Alta',
@@ -37,6 +37,11 @@ const COMBOS = {
   5: [[0, 1, 2, 3, 4]],
   6: combinations(6, 5),
   7: combinations(7, 5),
+  8: combinations(8, 5),
+  9: combinations(9, 5),
+  10: combinations(10, 5),
+  11: combinations(11, 5),
+  12: combinations(12, 5),
 };
 
 /** Straight high card from a rank bitmask (handles the wheel). */
@@ -281,6 +286,7 @@ function describe(cat, kickers) {
 export function evaluate(cards) {
   if (cards.length < 5) throw new Error('At least five cards are required to evaluate a hand');
   const combos = COMBOS[cards.length];
+  if (!combos) throw new Error(`Cannot evaluate a hand with ${cards.length} cards`);
   let best = null;
   for (const combo of combos) {
     const hand = [cards[combo[0]], cards[combo[1]], cards[combo[2]], cards[combo[3]], cards[combo[4]]];
@@ -294,4 +300,42 @@ export function evaluate(cards) {
     name: CATEGORY_NAMES[best.cat],
     description: describe(best.cat, best.kickers),
   };
+}
+
+const ROYAL_FLUSH_VALUE = pack(8, 14);
+
+/**
+ * Evaluate a hand that may contain suit jokers. A joker can take any rank of
+ * its own suit. The search is bounded by the number of jokers in play.
+ */
+export function evaluateWithJokers(cards) {
+  const jokers = cards.filter((card) => isJoker(card));
+  if (!jokers.length) return evaluate(cards);
+
+  const fixed = cards.filter((card) => !isJoker(card));
+  let best = null;
+  const assigned = [];
+
+  const search = (index) => {
+    if (best && best.value === ROYAL_FLUSH_VALUE) return;
+    if (index === jokers.length) {
+      const result = evaluate([...fixed, ...assigned]);
+      if (!best || result.value > best.value) best = result;
+      return;
+    }
+    const joker = jokers[index];
+    for (let rank = 2; rank <= 14; rank += 1) {
+      assigned.push({ r: rank, s: joker.s });
+      search(index + 1);
+      assigned.pop();
+      if (best && best.value === ROYAL_FLUSH_VALUE) return;
+    }
+  };
+
+  search(0);
+  return best;
+}
+
+export function evaluateBest(cards) {
+  return cards.some((card) => isJoker(card)) ? evaluateWithJokers(cards) : evaluate(cards);
 }

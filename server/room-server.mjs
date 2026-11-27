@@ -6,6 +6,7 @@ import { PokerGame, GameAborted } from '../src/game.js';
 import { pickBotProfiles } from '../src/ai.js';
 import { SPEEDS } from '../src/speed.js';
 import { PLAYER_REACTIONS } from '../src/reactions.js';
+import { VARIANTS } from '../src/variants.js';
 
 export const DISCOVERY_PORT = Number(process.env.POKEKE_DISCOVERY_PORT) || 41234;
 
@@ -155,6 +156,7 @@ export class RoomManager {
           ? config.difficulty
           : 'normal',
         speed: SPEEDS[config.speed] ? config.speed : 'calm',
+        variant: VARIANTS[config.variant] ? config.variant : 'classic',
       },
       adminToken: crypto.randomBytes(16).toString('hex'),
       clients: new Map(),
@@ -266,6 +268,24 @@ export class RoomManager {
       const text = String(message.text || '').trim();
       if (!PLAYER_REACTIONS.includes(text)) return;
       room.game.react(client.id, text);
+      return;
+    }
+
+    if (message.t === 'power-draft') {
+      if (!room.game || room.status !== 'playing') return;
+      room.game.submitPowerDraft(client.id, message.picks);
+      return;
+    }
+
+    if (message.t === 'power') {
+      if (!room.game || room.status !== 'playing') return;
+      room.game.submitPower(client.id, message.power || {});
+      return;
+    }
+
+    if (message.t === 'market') {
+      if (!room.game || room.status !== 'playing') return;
+      room.game.submitMarket(client.id, message.itemId);
       return;
     }
 
@@ -510,6 +530,7 @@ export class RoomManager {
       smallBlind: room.config.smallBlind,
       bigBlind: room.config.bigBlind,
       difficulty: room.config.difficulty,
+      variant: room.config.variant,
       botDelayMin: speed.botDelayMin,
       botDelayMax: speed.botDelayMax,
       pauseScale: speed.pauseScale,
@@ -532,6 +553,7 @@ export class RoomManager {
           smallBlind: room.config.smallBlind,
           bigBlind: room.config.bigBlind,
           gameSeq: room.gameSeq,
+          variant: room.config.variant,
         },
       });
     }
@@ -630,6 +652,7 @@ export class RoomManager {
             players: this.room.clients.size,
             capacity: this.room.capacity,
             status: this.room.status,
+            variant: this.room.config.variant,
             port: this.port,
           };
           socket.send(JSON.stringify(reply), rinfo.port, rinfo.address, () => {});
