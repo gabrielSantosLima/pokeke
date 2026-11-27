@@ -57,6 +57,27 @@ const els = {
   speed: document.getElementById('speed-btn'),
   roomList: document.getElementById('room-list'),
   joinNote: document.getElementById('join-note'),
+  startClose: document.getElementById('start-close'),
+  lobbyClose: document.getElementById('lobby-close'),
+  reconnectClose: document.getElementById('reconnect-close'),
+  tutorialClose: document.getElementById('tutorial-close'),
+  endClose: document.getElementById('end-close'),
+  error: document.getElementById('error-overlay'),
+  errorTitle: document.getElementById('error-title'),
+  errorText: document.getElementById('error-text'),
+  errorRetry: document.getElementById('error-retry'),
+  errorDismiss: document.getElementById('error-dismiss'),
+  errorClose: document.getElementById('error-close'),
+  updateBtn: document.getElementById('update-btn'),
+  updateOverlay: document.getElementById('update-overlay'),
+  updateTitle: document.getElementById('update-title'),
+  updateText: document.getElementById('update-text'),
+  updateProgress: document.getElementById('update-progress'),
+  updateProgressBar: document.getElementById('update-progress-bar'),
+  updatePrimary: document.getElementById('update-primary'),
+  updateRelease: document.getElementById('update-release'),
+  updateNote: document.getElementById('update-note'),
+  updateClose: document.getElementById('update-close'),
 };
 
 let toastTimer = null;
@@ -64,6 +85,17 @@ let reconnectRun = 0;
 let reconnectTimer = null;
 let reconnectSocket = null;
 let tutorialStep = 0;
+let errorRetryHandler = null;
+let appInfo = null;
+let updateStatus = {
+  state: 'idle',
+  version: null,
+  percent: 0,
+  error: null,
+  canInstall: false,
+  manual: false,
+  channel: 'production',
+};
 
 // ---------------------------------------------------------------- helpers
 
@@ -72,6 +104,39 @@ function hideOverlays() {
   els.end.classList.add('hidden');
   els.lobby.classList.add('hidden');
   els.reconnect.classList.add('hidden');
+  els.error.classList.add('hidden');
+  els.updateOverlay.classList.add('hidden');
+}
+
+function showError({ title = 'Algo deu errado', text, retry = null }) {
+  els.errorTitle.textContent = title;
+  els.errorText.textContent =
+    text || 'Não foi possível concluir a operação. Verifique sua conexão e tente novamente.';
+  errorRetryHandler = retry;
+  els.errorRetry.hidden = !retry;
+  els.errorDismiss.textContent = retry ? 'Fechar' : 'Voltar';
+  els.error.classList.remove('hidden');
+}
+
+function closeError() {
+  els.error.classList.add('hidden');
+  errorRetryHandler = null;
+}
+
+async function retryLastError() {
+  const handler = errorRetryHandler;
+  closeError();
+  if (!handler) return;
+  try {
+    await handler();
+  } catch (error) {
+    console.error(error);
+    showError({
+      title: 'A operação falhou novamente',
+      text: 'Verifique sua conexão e tente outra vez.',
+      retry: handler,
+    });
+  }
 }
 
 function showReconnectOverlay(text) {
@@ -120,6 +185,177 @@ function showToast(text) {
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 3400);
+}
+
+const CHANNEL_LABELS = {
+  production: 'estável',
+  beta: 'beta',
+  development: 'desenvolvimento',
+};
+
+function versionLine() {
+  if (!appInfo) return '';
+  return `Versão ${appInfo.version} · canal ${CHANNEL_LABELS[appInfo.channel] || appInfo.channel}`;
+}
+
+function refreshUpdateBadge() {
+  if (!desktop || !els.updateBtn) return;
+  els.updateBtn.hidden = false;
+  els.updateBtn.classList.toggle(
+    'has-update',
+    ['available', 'downloading', 'downloaded'].includes(updateStatus.state),
+  );
+  els.updateBtn.classList.toggle('has-error', updateStatus.state === 'error');
+  if (updateStatus.state === 'downloading') {
+    els.updateBtn.title = `Baixando atualização — ${updateStatus.percent}%`;
+  } else if (updateStatus.state === 'available') {
+    els.updateBtn.title = `Atualização ${updateStatus.version} disponível`;
+  } else if (updateStatus.state === 'downloaded') {
+    els.updateBtn.title = 'Atualização pronta para instalar';
+  } else if (updateStatus.state === 'error') {
+    els.updateBtn.title = 'Falha ao verificar atualizações';
+  } else {
+    els.updateBtn.title = 'Atualizações';
+  }
+}
+
+function renderUpdate() {
+  const state = updateStatus.state;
+  const version = updateStatus.version;
+  const percent = updateStatus.percent || 0;
+  const versionLabel = versionLine();
+  let title = 'Atualizações';
+  let text = versionLabel || 'Verifique se há uma versão nova do Pokeke.';
+  let primary = 'Verificar atualizações';
+  let primaryDisabled = false;
+  let note = 'A verificação automática acontece a cada 6 horas.';
+  let showProgress = false;
+
+  if (state === 'checking') {
+    title = 'Verificando atualizações…';
+    text = 'Aguarde um instante enquanto procuramos uma versão nova.';
+    primary = 'Verificando…';
+    primaryDisabled = true;
+    note = versionLabel;
+  } else if (state === 'available') {
+    title = 'Atualização disponível';
+    text = updateStatus.manual
+      ? `A versão ${version} está disponível. Abra a página de releases para baixar o instalador.`
+      : `A versão ${version} está disponível. O download começa automaticamente.`;
+    primary = updateStatus.manual ? 'Abrir página de download' : 'Baixar agora';
+    note = versionLabel;
+  } else if (state === 'downloading') {
+    title = 'Baixando atualização';
+    text = `Baixando a versão ${version || 'nova'} — ${percent}%.`;
+    primary = `Baixando… ${percent}%`;
+    primaryDisabled = true;
+    note = 'Você pode continuar jogando enquanto o download termina.';
+    showProgress = true;
+  } else if (state === 'downloaded') {
+    title = 'Atualização pronta';
+    text = `A versão ${version} foi baixada. Reinicie o aplicativo para concluir a instalação.`;
+    primary = 'Reiniciar e instalar';
+    note = 'A partida atual será encerrada para aplicar a atualização.';
+    showProgress = true;
+  } else if (state === 'error') {
+    title = 'Não foi possível atualizar';
+    text = updateStatus.error || 'A verificação falhou. Confira sua conexão e tente novamente.';
+    primary = 'Tentar novamente';
+    note = versionLabel;
+  } else if (!desktop) {
+    text = 'As atualizações automáticas estão disponíveis no aplicativo desktop.';
+    primary = 'Ver página de releases';
+    note = '';
+  } else if (appInfo && appInfo.channel === 'development') {
+    text = `${versionLabel} — este é um build de desenvolvimento.`;
+    primary = 'Ver página de releases';
+    note = 'Atualizações automáticas ficam desativadas no canal de desenvolvimento.';
+  }
+
+  els.updateTitle.textContent = title;
+  els.updateText.textContent = text;
+  els.updatePrimary.textContent = primary;
+  els.updatePrimary.disabled = primaryDisabled;
+  els.updateNote.textContent = note;
+  els.updateProgress.hidden = !showProgress;
+  els.updateProgressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  refreshUpdateBadge();
+}
+
+function openUpdateOverlay() {
+  renderUpdate();
+  els.updateOverlay.classList.remove('hidden');
+}
+
+function closeUpdateOverlay() {
+  els.updateOverlay.classList.add('hidden');
+}
+
+async function runUpdateAction() {
+  if (!desktop) return;
+  try {
+    if (appInfo && appInfo.channel === 'development' && updateStatus.state === 'idle') {
+      if (desktop.openRelease) desktop.openRelease();
+      return;
+    }
+    if (updateStatus.state === 'downloaded' && desktop.installUpdate) {
+      desktop.installUpdate();
+      return;
+    }
+    if (updateStatus.state === 'available' && updateStatus.manual && desktop.openRelease) {
+      desktop.openRelease();
+      return;
+    }
+    updateStatus = { ...updateStatus, state: 'checking', error: null };
+    renderUpdate();
+    const next = await desktop.checkForUpdates();
+    if (next) updateStatus = next;
+    renderUpdate();
+  } catch (error) {
+    console.error(error);
+    updateStatus = {
+      ...updateStatus,
+      state: 'error',
+      error: error.message || 'Falha ao verificar atualizações.',
+    };
+    renderUpdate();
+  }
+}
+
+function initUpdates() {
+  if (!desktop || typeof desktop.getUpdateState !== 'function') {
+    els.updateBtn.hidden = true;
+    return;
+  }
+  els.updateBtn.hidden = false;
+  els.updateBtn.addEventListener('click', openUpdateOverlay);
+  els.updateClose.addEventListener('click', closeUpdateOverlay);
+  els.updatePrimary.addEventListener('click', runUpdateAction);
+  els.updateRelease.addEventListener('click', () => {
+    if (desktop.openRelease) desktop.openRelease();
+  });
+
+  desktop
+    .getInfo()
+    .then((info) => {
+      appInfo = info;
+      renderUpdate();
+    })
+    .catch((error) => console.error(error));
+  desktop
+    .getUpdateState()
+    .then((state) => {
+      if (state) updateStatus = state;
+      renderUpdate();
+    })
+    .catch((error) => console.error(error));
+  if (desktop.onUpdateStatus) {
+    desktop.onUpdateStatus((state) => {
+      if (!state) return;
+      updateStatus = state;
+      renderUpdate();
+    });
+  }
 }
 
 function money(value) {
@@ -243,10 +479,8 @@ function showStartMenu() {
     currentGame = null;
   }
   disconnectNet(true);
+  hideOverlays();
   els.start.classList.remove('hidden');
-  els.end.classList.add('hidden');
-  els.lobby.classList.add('hidden');
-  els.reconnect.classList.add('hidden');
   els.speed.style.display = '';
   ui.reset();
   setMode('solo');
@@ -254,6 +488,17 @@ function showStartMenu() {
 }
 
 document.getElementById('restart-btn').addEventListener('click', showStartMenu);
+
+// Every overlay has an explicit exit: close button, Escape and (where it
+// makes sense) a back/skip action. These handlers keep those paths in sync.
+els.startClose.addEventListener('click', () => els.start.classList.add('hidden'));
+els.lobbyClose.addEventListener('click', () => document.getElementById('lobby-leave').click());
+els.reconnectClose.addEventListener('click', () => els.reconnectCancel.click());
+els.tutorialClose.addEventListener('click', () => closeTutorial());
+els.endClose.addEventListener('click', () => els.endMenu.click());
+els.errorClose.addEventListener('click', closeError);
+els.errorDismiss.addEventListener('click', closeError);
+els.errorRetry.addEventListener('click', retryLastError);
 
 document.getElementById('start-btn').addEventListener('click', () => {
   initAudio();
@@ -347,6 +592,11 @@ async function startGame(config) {
   } catch (error) {
     if (error instanceof GameAborted) return;
     console.error(error);
+    showError({
+      title: 'A partida foi interrompida',
+      text: 'Um erro inesperado aconteceu. Você pode começar outra partida.',
+      retry: () => startGame(config),
+    });
   }
 }
 
@@ -412,7 +662,11 @@ async function createHostRoom() {
     });
   } catch (error) {
     console.error(error);
-    showToast('Não foi possível criar a sala.');
+    showError({
+      title: 'Não foi possível criar a sala',
+      text: 'Confira se a rede local está disponível e tente novamente.',
+      retry: createHostRoom,
+    });
   } finally {
     button.disabled = false;
   }
@@ -435,6 +689,11 @@ async function scanRooms() {
   } catch (error) {
     console.error(error);
     els.roomList.innerHTML = '<div class="room-empty">Não foi possível procurar salas.</div>';
+    showError({
+      title: 'Não foi possível procurar salas',
+      text: 'Verifique se o app tem acesso à rede local e tente novamente.',
+      retry: scanRooms,
+    });
   } finally {
     button.disabled = false;
     button.textContent = 'Procurar salas';
@@ -508,13 +767,41 @@ function setNetUi(active) {
   els.speed.style.display = active ? 'none' : '';
 }
 
+function reportConnectionFailure(session, title, text) {
+  if (session.failed) return;
+  session.failed = true;
+  session.intentional = true;
+  try {
+    if (session.ws) session.ws.close();
+  } catch {
+    /* ignore */
+  }
+  if (net === session) net = null;
+  setNetUi(false);
+  setMode('join');
+  showError({
+    title,
+    text,
+    retry: () =>
+      connectToRoom({
+        url: session.url,
+        name: session.name,
+        adminToken: session.adminToken,
+        host: session.host,
+      }),
+  });
+}
+
 function connectToRoom({ url, name, adminToken = null, host = false }) {
   disconnectNet(false);
   let socket;
   try {
     socket = new WebSocket(url);
   } catch {
-    showToast('Endereço inválido.');
+    showError({
+      title: 'Endereço inválido',
+      text: 'Confira o endereço da sala. O formato esperado é IP:porta.',
+    });
     return;
   }
 
@@ -540,17 +827,11 @@ function connectToRoom({ url, name, adminToken = null, host = false }) {
 
   const timeout = setTimeout(() => {
     if (net === session && !session.viewerId && !session.failed) {
-      session.failed = true;
-      showToast('A sala não respondeu.');
-      session.intentional = true;
-      try {
-        socket.close();
-      } catch {
-        /* ignore */
-      }
-      if (net === session) net = null;
-      setNetUi(false);
-      setMode('join');
+      reportConnectionFailure(
+        session,
+        'A sala não respondeu',
+        'Confira o endereço e se o anfitrião ainda está com a sala aberta.',
+      );
     }
   }, 8000);
 
@@ -582,6 +863,14 @@ function connectToRoom({ url, name, adminToken = null, host = false }) {
       startReconnect(session);
       return;
     }
+    if (!session.joined) {
+      reportConnectionFailure(
+        session,
+        'A conexão com a sala foi encerrada',
+        'A sala pode ter fechado antes de você entrar. Tente novamente.',
+      );
+      return;
+    }
     net = null;
     setNetUi(false);
     showToast('A conexão com a sala foi encerrada.');
@@ -593,9 +882,12 @@ function connectToRoom({ url, name, adminToken = null, host = false }) {
   });
 
   socket.addEventListener('error', () => {
-    if (session.failed) return;
-    session.failed = true;
-    showToast('Não foi possível conectar à sala.');
+    if (session.failed || session.joined) return;
+    reportConnectionFailure(
+      session,
+      'Não foi possível conectar à sala',
+      'Confira o endereço, a rede local e se o anfitrião está com a sala aberta.',
+    );
   });
 }
 
@@ -643,12 +935,19 @@ function startReconnect(session) {
     net = null;
     setNetUi(false);
     clearSavedReconnect();
-    showToast('Não foi possível reconectar à partida.');
     els.start.classList.remove('hidden');
     els.end.classList.add('hidden');
     els.lobby.classList.add('hidden');
     ui.reset();
     setMode('join');
+    showError({
+      title: 'Não foi possível reconectar à partida',
+      text: 'A partida pode ter terminado ou a rede local caiu. Confira sua conexão e tente novamente.',
+      retry: () => {
+        session.reconnecting = false;
+        startReconnect(session);
+      },
+    });
   };
 
   const scheduleNext = () => {
@@ -889,7 +1188,6 @@ function handleNetMessage(session, message) {
   }
 
   if (message.t === 'error') {
-    showToast(message.message || 'Erro na sala.');
     if (!session.viewerId) {
       session.intentional = true;
       session.failed = true;
@@ -900,7 +1198,21 @@ function handleNetMessage(session, message) {
         /* ignore */
       }
       if (net === session) net = null;
+      setNetUi(false);
       setMode('join');
+      showError({
+        title: 'Não foi possível entrar na sala',
+        text: message.message || 'A sala recusou a entrada. Confira os dados e tente novamente.',
+        retry: () =>
+          connectToRoom({
+            url: session.url,
+            name: session.name,
+            adminToken: session.adminToken,
+            host: session.host,
+          }),
+      });
+    } else {
+      showToast(message.message || 'Erro na sala.');
     }
     return;
   }
@@ -1127,21 +1439,40 @@ document.getElementById('tutorial-link').addEventListener('click', () => openTut
 document.getElementById('help-btn').addEventListener('click', () => openTutorial(0));
 
 document.addEventListener('keydown', (event) => {
-  if (els.tutorial.classList.contains('hidden')) return;
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeTutorial();
-  } else if (event.key === 'ArrowRight') {
+  const tutorialOpen =
+    !els.tutorial.classList.contains('hidden') &&
+    els.error.classList.contains('hidden') &&
+    els.updateOverlay.classList.contains('hidden');
+  if (tutorialOpen && event.key === 'ArrowRight') {
     event.preventDefault();
     nextTutorial();
-  } else if (event.key === 'ArrowLeft') {
+    return;
+  }
+  if (tutorialOpen && event.key === 'ArrowLeft') {
     event.preventDefault();
     backTutorial();
+    return;
   }
+  if (event.key !== 'Escape') return;
+
+  const layers = [
+    [els.error, closeError],
+    [els.updateOverlay, closeUpdateOverlay],
+    [els.tutorial, closeTutorial],
+    [els.end, () => els.endMenu.click()],
+    [els.lobby, () => document.getElementById('lobby-leave').click()],
+    [els.reconnect, () => els.reconnectCancel.click()],
+    [els.start, () => els.start.classList.add('hidden')],
+  ];
+  const active = layers.find(([element]) => !element.classList.contains('hidden'));
+  if (!active) return;
+  event.preventDefault();
+  active[1]();
 });
 
 // ---------------------------------------------------------------- startup
 
+initUpdates();
 setMode('solo');
 const restoredSession = trySavedReconnect();
 if (!restoredSession && !tutorialSeen()) openTutorial(0);

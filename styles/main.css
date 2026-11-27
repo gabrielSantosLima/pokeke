@@ -1218,9 +1218,12 @@ button {
   bottom: calc(100% + 8px);
   z-index: 40;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 5px;
-  width: 252px;
+  width: 300px;
+  max-height: min(56vh, 380px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(13, 30, 24, 0.98), rgba(6, 16, 12, 0.98));
@@ -1264,6 +1267,21 @@ button {
 .reaction-popover button:hover {
   background: rgba(216, 179, 106, 0.18);
   border-color: rgba(216, 179, 106, 0.35);
+}
+
+.reaction-popover .reaction-close {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 34px;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--muted-2);
+  font-size: 12px;
+}
+
+.reaction-popover .reaction-close:hover {
+  color: #fff7e6;
+  border-color: rgba(216, 179, 106, 0.4);
 }
 
 @keyframes popIn {
@@ -1723,6 +1741,43 @@ input[type='range']:disabled {
   pointer-events: none;
 }
 
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.modal-close:hover {
+  color: #fff7e6;
+  background: rgba(216, 179, 106, 0.2);
+  border-color: rgba(216, 179, 106, 0.5);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+.modal-close--inline {
+  position: static;
+  flex: 0 0 auto;
+}
+
 .modal-brand {
   position: relative;
   display: inline-flex;
@@ -2034,6 +2089,77 @@ input[type='range']:disabled {
   color: rgba(157, 177, 166, 0.45);
 }
 
+.modal-error,
+.modal-update {
+  width: min(460px, 100%);
+  text-align: center;
+}
+
+.modal-error .modal-brand,
+.modal-update .modal-brand {
+  display: flex;
+  justify-content: center;
+}
+
+.modal-error .modal-sub,
+.modal-update .modal-sub {
+  margin-left: auto;
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+
+.modal-error .btn-play + .btn-play,
+.modal-update .btn-play + .btn-play {
+  margin-top: 9px;
+}
+
+.update-progress {
+  height: 8px;
+  margin: 0 0 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.update-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f8f63, #d8b36a);
+  transition: width 0.25s ease;
+}
+
+.update-btn.has-update {
+  color: #fff2c8;
+  border-color: rgba(216, 179, 106, 0.6);
+  box-shadow: 0 0 0 3px rgba(216, 179, 106, 0.12);
+  animation: updatePulse 1.8s ease-in-out infinite;
+}
+
+.update-btn.has-error {
+  color: #ffd7d0;
+  border-color: rgba(240, 120, 106, 0.55);
+}
+
+@keyframes updatePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(216, 179, 106, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(216, 179, 106, 0.04);
+  }
+}
+
+#error-overlay {
+  z-index: 95;
+}
+
+#update-overlay {
+  z-index: 88;
+}
+
 .modal-end {
   width: min(480px, 100%);
   text-align: center;
@@ -2237,6 +2363,13 @@ input[type='range']:disabled {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+}
+
+.tutorial-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .tutorial-skip {
@@ -2806,7 +2939,8 @@ input[type='range']:disabled {
   }
 
   .reaction-popover {
-    width: 224px;
+    width: 250px;
+    max-height: min(48vh, 300px);
   }
 
   .reaction-popover button {

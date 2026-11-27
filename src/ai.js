@@ -16,6 +16,12 @@ export const BOT_PROFILES = [
   { name: 'Rex', avatar: '🦁', style: 'Paciente', aggression: 0.4, tightness: 0.64, bluff: 0.07 },
   { name: 'Mel', avatar: '🐰', style: 'Mão-fechada', aggression: 0.36, tightness: 0.78, bluff: 0.04 },
   { name: 'Aria', avatar: '🦋', style: 'Solta', aggression: 0.75, tightness: 0.28, bluff: 0.24 },
+  { name: 'Léo', avatar: '🦄', style: 'Sonhador', aggression: 0.61, tightness: 0.41, bluff: 0.18 },
+  { name: 'Bia', avatar: '🐨', style: 'Tranquila', aggression: 0.33, tightness: 0.6, bluff: 0.06 },
+  { name: 'Davi', avatar: '🦅', style: 'Observador', aggression: 0.58, tightness: 0.58, bluff: 0.1 },
+  { name: 'Kira', avatar: '🐙', style: 'Caótica', aggression: 0.9, tightness: 0.24, bluff: 0.3 },
+  { name: 'Tom', avatar: '🐸', style: 'Brincalhão', aggression: 0.63, tightness: 0.35, bluff: 0.22 },
+  { name: 'Yara', avatar: '🦚', style: 'Elegante', aggression: 0.47, tightness: 0.52, bluff: 0.12 },
 ];
 
 export function pickBotProfiles(count, rng = Math.random) {

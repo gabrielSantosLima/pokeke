@@ -42,6 +42,9 @@
           <button class="icon-btn" id="sound-btn" type="button" title="Ligar/desligar som" aria-label="Som">
             🔊
           </button>
+          <button class="icon-btn update-btn" id="update-btn" type="button" title="Atualizações" aria-label="Atualizações" hidden>
+            ⬆️
+          </button>
           <button class="icon-btn" id="help-btn" type="button" title="Como jogar" aria-label="Como jogar">
             ?
           </button>
@@ -136,10 +139,11 @@
     </div>
 
     <div class="overlay" id="start-overlay">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="start-title">
+        <button class="modal-close" id="start-close" type="button" title="Fechar" aria-label="Fechar menu">✕</button>
         <div class="modal-glow" aria-hidden="true"></div>
         <div class="modal-brand"><span>♠</span> POKEKE</div>
-        <h2>Texas Hold'em</h2>
+        <h2 id="start-title">Texas Hold'em</h2>
         <p class="modal-sub">
           Jogue contra bots ou reúna a galera na mesma rede local. Quem faltar na mesa vira bot.
         </p>
@@ -329,7 +333,8 @@
     </div>
 
     <div class="overlay hidden" id="lobby-overlay">
-      <div class="modal modal-lobby">
+      <div class="modal modal-lobby" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+        <button class="modal-close" id="lobby-close" type="button" title="Sair da sala" aria-label="Sair da sala">✕</button>
         <div class="modal-brand"><span>♠</span> POKEKE · SALA</div>
         <h2 id="lobby-title">Sala</h2>
         <p class="modal-sub" id="lobby-sub">Aguardando jogadores…</p>
@@ -344,9 +349,10 @@
     </div>
 
     <div class="overlay hidden" id="reconnect-overlay">
-      <div class="modal modal-reconnect">
+      <div class="modal modal-reconnect" role="dialog" aria-modal="true" aria-labelledby="reconnect-title">
+        <button class="modal-close" id="reconnect-close" type="button" title="Sair da sala" aria-label="Sair da sala">✕</button>
         <div class="modal-brand"><span>♠</span> POKEKE</div>
-        <h2>Reconectando…</h2>
+        <h2 id="reconnect-title">Reconectando…</h2>
         <p class="modal-sub" id="reconnect-text">Sua vaga na mesa está reservada.</p>
         <div class="reconnect-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         <button class="btn btn-ghost btn-play" id="reconnect-cancel" type="button">Sair da sala</button>
@@ -354,10 +360,13 @@
     </div>
 
     <div class="overlay hidden" id="tutorial-overlay">
-      <div class="modal modal-tutorial">
+      <div class="modal modal-tutorial" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
         <div class="tutorial-head">
           <span class="modal-brand"><span>♠</span> POKEKE · TUTORIAL</span>
-          <button class="tutorial-skip" id="tutorial-skip" type="button">Pular</button>
+          <div class="tutorial-head-actions">
+            <button class="tutorial-skip" id="tutorial-skip" type="button">Pular</button>
+            <button class="modal-close modal-close--inline" id="tutorial-close" type="button" title="Fechar tutorial" aria-label="Fechar tutorial">✕</button>
+          </div>
         </div>
         <div class="tutorial-visual" id="tutorial-visual"></div>
         <h2 id="tutorial-title"></h2>
@@ -373,7 +382,8 @@
     </div>
 
     <div class="overlay hidden" id="end-overlay">
-      <div class="modal modal-end">
+      <div class="modal modal-end" role="dialog" aria-modal="true" aria-labelledby="end-title">
+        <button class="modal-close" id="end-close" type="button" title="Fechar" aria-label="Fechar resultado">✕</button>
         <div class="modal-brand" id="end-brand"><span>♠</span> POKEKE</div>
         <h2 id="end-title">Fim de jogo</h2>
         <p class="modal-sub" id="end-text"></p>
@@ -381,6 +391,32 @@
         <button class="btn btn-primary btn-play" id="again-btn" type="button">Jogar novamente</button>
         <button class="btn btn-ghost btn-play" id="end-menu-btn" type="button">Mudar configurações</button>
         <p class="modal-note" id="end-note"></p>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="error-overlay">
+      <div class="modal modal-error" role="alertdialog" aria-modal="true" aria-labelledby="error-title">
+        <button class="modal-close" id="error-close" type="button" title="Fechar" aria-label="Fechar mensagem de erro">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE</div>
+        <h2 id="error-title">Algo deu errado</h2>
+        <p class="modal-sub" id="error-text"></p>
+        <button class="btn btn-primary btn-play" id="error-retry" type="button">Tentar novamente</button>
+        <button class="btn btn-ghost btn-play" id="error-dismiss" type="button">Voltar</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="update-overlay">
+      <div class="modal modal-update" role="dialog" aria-modal="true" aria-labelledby="update-title">
+        <button class="modal-close" id="update-close" type="button" title="Fechar" aria-label="Fechar atualizações">✕</button>
+        <div class="modal-brand"><span>♠</span> POKEKE · ATUALIZAÇÕES</div>
+        <h2 id="update-title">Atualizações</h2>
+        <p class="modal-sub" id="update-text"></p>
+        <div class="update-progress" id="update-progress" hidden>
+          <div class="update-progress-bar" id="update-progress-bar"></div>
+        </div>
+        <button class="btn btn-primary btn-play" id="update-primary" type="button">Verificar atualizações</button>
+        <button class="btn btn-ghost btn-play" id="update-release" type="button">Ver página de releases</button>
+        <p class="modal-note" id="update-note"></p>
       </div>
     </div>
 

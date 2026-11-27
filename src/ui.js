@@ -217,6 +217,18 @@ export class PokerUI {
       });
       popover.appendChild(button);
     }
+
+    const close = this.doc.createElement('button');
+    close.type = 'button';
+    close.className = 'reaction-close';
+    close.textContent = '✕';
+    close.title = 'Fechar reações';
+    close.setAttribute('aria-label', 'Fechar reações');
+    close.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.setReactionPicker(false);
+    });
+    popover.appendChild(close);
   }
 
   setReactionPicker(open) {
@@ -616,6 +628,11 @@ export class PokerUI {
     });
 
     this.doc.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.el.reactionPopover.classList.contains('hidden')) {
+        event.preventDefault();
+        this.setReactionPicker(false);
+        return;
+      }
       if (!this.options || !this.game) return;
       if (this.doc.querySelector('.overlay:not(.hidden)')) return;
       const tag = (event.target && event.target.tagName) || '';
