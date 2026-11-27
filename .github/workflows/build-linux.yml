@@ -4,16 +4,30 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build and attach the Linux artifact to"
+        description: "Release tag to build and attach the Linux artifacts to"
         required: false
         default: ""
         type: string
+      channel:
+        description: "Release channel to build"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - dev
+          - beta
+          - prod
   workflow_call:
     inputs:
       tag:
-        description: "Release tag to build and attach the Linux artifact to"
+        description: "Release tag to build and attach the Linux artifacts to"
         required: false
         default: ""
+        type: string
+      channel:
+        description: "Release channel to build"
+        required: false
+        default: prod
         type: string
 
 permissions:
@@ -41,22 +55,43 @@ jobs:
       - name: Run checks
         run: npm test
 
-      - name: Build portable Linux app
+      - name: Select build config
+        id: config
+        shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel || 'prod' }}
         run: |
-          npm run package:linux
-          cd release
-          zip -r Pokeke-linux-x64.zip Pokeke-linux-x64
+          case "$CHANNEL" in
+            dev) config="electron-builder.dev.yml" ; out="release-dev" ;;
+            beta) config="electron-builder.beta.yml" ; out="release-beta" ;;
+            *) config="electron-builder.yml" ; out="release" ;;
+          esac
+          echo "config=$config" >> "$GITHUB_OUTPUT"
+          echo "output=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Build installers
+        run: npx electron-builder --config "${{ steps.config.outputs.config }}" --linux --publish never
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pokeke-linux-x64
-          path: release/Pokeke-linux-x64.zip
+          name: pokeke-linux-${{ inputs.channel || 'prod' }}
+          path: ${{ steps.config.outputs.output }}/*
           if-no-files-found: error
 
-      - name: Attach artifact to the release
+      - name: Attach artifacts to the release
         if: ${{ inputs.tag != '' }}
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
-        run: gh release upload "$TAG" release/Pokeke-linux-x64.zip --clobber
+          OUT: ${{ steps.config.outputs.output }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=("$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.blockmap "$OUT"/latest*.yml)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Linux artifacts found for $TAG" >&2
+            exit 1
+          fi
+          gh release upload "$TAG" "${files[@]}" --clobber

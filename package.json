@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Texas Hold'em poker with bots and local-network multiplayer for desktop.",
+  "author": "Pokeke <noreply@pokeke.app>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -12,16 +13,27 @@
   "main": "electron/main.mjs",
   "scripts": {
     "start": "node server.js",
-    "desktop": "electron .",
+    "desktop": "node scripts/desktop.mjs",
+    "desktop:dev": "node scripts/desktop.mjs dev",
+    "desktop:beta": "node scripts/desktop.mjs beta",
+    "desktop:prod": "node scripts/desktop.mjs prod",
     "package": "electron-packager . Pokeke --platform=win32 --arch=x64 --out=release --overwrite --prune --icon=build/icon.ico --ignore=\"^/(release|\\.git)\"",
     "package:linux": "electron-packager . Pokeke --platform=linux --arch=x64 --out=release --overwrite --prune --icon=build/icon.png --ignore=\"^/(release|\\.git)\"",
-    "test": "node test/engine.test.js && node test/room.test.js"
+    "dist": "electron-builder --config electron-builder.yml",
+    "dist:dev": "electron-builder --config electron-builder.dev.yml",
+    "dist:beta": "electron-builder --config electron-builder.beta.yml",
+    "dist:prod": "electron-builder --config electron-builder.yml",
+    "dist:win": "electron-builder --win --config electron-builder.yml",
+    "dist:linux": "electron-builder --linux --config electron-builder.yml",
+    "test": "node test/engine.test.js && node test/room.test.js && node test/update.test.js && node test/reactions.test.js"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "ws": "^8.23.0"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
-    "electron": "^45.3.2"
+    "electron": "^45.3.2",
+    "electron-builder": "^26.15.3"
   }
 }

@@ -1,0 +1,7 @@
+extends: ./electron-builder.yml
+appId: com.pokeke.app.dev
+productName: Pokeke Dev
+directories:
+  output: release-dev
+extraMetadata:
+  channel: development

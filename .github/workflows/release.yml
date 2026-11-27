@@ -53,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,7 +91,14 @@ jobs:
             VERSION=$(node scripts/bump-version.mjs --bump "$BUMP" --preid "$PREID")
           fi
 
+          if [[ "$VERSION" == *-* ]]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="production"
+          fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         env:
@@ -134,6 +142,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       tag: v${{ needs.release.outputs.version }}
+      channel: ${{ needs.release.outputs.channel }}
 
   build-linux:
     name: Build Linux
@@ -143,4 +152,5 @@ jobs:
     uses: ./.github/workflows/build-linux.yml
     with:
       tag: v${{ needs.release.outputs.version }}
+      channel: ${{ needs.release.outputs.channel }}
 

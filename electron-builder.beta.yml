@@ -1,0 +1,12 @@
+extends: ./electron-builder.yml
+appId: com.pokeke.app.beta
+productName: Pokeke Beta
+directories:
+  output: release-beta
+extraMetadata:
+  channel: beta
+publish:
+  provider: github
+  owner: gabrielSantosLima
+  repo: pokeke
+  releaseType: prerelease

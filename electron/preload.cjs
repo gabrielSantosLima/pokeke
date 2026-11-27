@@ -7,4 +7,13 @@ contextBridge.exposeInMainWorld('pokekeDesktop', {
   createRoom: (config) => ipcRenderer.invoke('room:create', config),
   closeRoom: () => ipcRenderer.invoke('room:close'),
   getLobby: () => ipcRenderer.invoke('room:lobby'),
+  getUpdateState: () => ipcRenderer.invoke('update:getState'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  openRelease: () => ipcRenderer.invoke('update:openRelease'),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('update:status', listener);
+    return () => ipcRenderer.removeListener('update:status', listener);
+  },
 });

@@ -1,0 +1,42 @@
+appId: com.pokeke.app
+productName: Pokeke
+directories:
+  output: release
+publish:
+  provider: github
+  owner: gabrielSantosLima
+  repo: pokeke
+  releaseType: release
+files:
+  - "**/*"
+  - "!test/**"
+  - "!.github/**"
+  - "!.agent/**"
+  - "!docs/**"
+  - "!scripts/**"
+  - "!release*/**"
+  - "!dist*/**"
+  - "!**/*.md"
+  - "!**/*.log"
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "${productName}"
+  artifactName: "${productName}-Setup-${version}.${ext}"
+portable:
+  artifactName: "${productName}-${version}-portable.${ext}"
+linux:
+  icon: build/icon.png
+  category: Game
+  maintainer: Pokeke <noreply@pokeke.app>
+  target:
+    - AppImage
+    - deb

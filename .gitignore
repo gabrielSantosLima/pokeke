@@ -1,5 +1,8 @@
 node_modules/
 release/
+release-beta/
+release-dev/
+dist/
 .DS_Store
 Thumbs.db
 *.log
@@ -9,4 +12,3 @@ Thumbs.db
 .env.*
 PLAN.md
 NOTES.md
-dist/

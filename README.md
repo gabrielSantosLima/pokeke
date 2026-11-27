@@ -29,15 +29,18 @@ can start with one human or six.
   the app reconnects automatically.
 - **First-run tutorial** — six steps covering hands, streets, actions, blinds,
   all-ins and LAN play, reopenable from the `?` button.
-- **Emoji reactions** — send reactions from the action bar; bots react to
+- **Emoji reactions** — a large emoji picker in the action bar; bots react to
   folds, raises, all-ins, wins and losses.
 - **Adjustable pace and difficulty** — Calm, Normal and Fast table speeds plus
   three bot difficulty levels.
+- **Installer and automatic updates** — Windows NSIS installer and Linux
+  AppImage/deb packages update from GitHub releases. Stable and beta channels
+  are supported, with manual retry when a check fails.
 - **Portable Windows and Linux builds** — `npm run package` produces
   `release/Pokeke-win32-x64/Pokeke.exe` and `npm run package:linux` produces
   `release/Pokeke-linux-x64/Pokeke`; no installer required.
-- **Native release builds** — the release workflow publishes a Windows zip and a
-  Linux x64 zip built on Ubuntu.
+- **Native release builds** — the release workflow publishes the installer,
+  portable packages and update metadata for Windows and Linux.
 
 ## Requirements
 
@@ -53,6 +56,30 @@ can start with one human or six.
 npm install
 npm run desktop
 ```
+
+Run a specific channel locally:
+
+```bash
+npm run desktop:dev
+npm run desktop:beta
+npm run desktop:prod
+```
+
+Build installers with electron-builder:
+
+```bash
+npm run dist:win      # NSIS installer and portable .exe for Windows
+npm run dist:linux    # AppImage and .deb for Linux
+npm run dist:dev      # Pokeke Dev channel
+npm run dist:beta     # Pokeke Beta channel
+npm run dist:prod     # Pokeke stable channel
+```
+
+The installers are written to `release/`, `release-dev/` or `release-beta/`
+together with the `latest*.yml` metadata used by automatic updates. Only
+installed builds update themselves: the NSIS installer on Windows and the
+AppImage on Linux. Portable builds and `.deb` packages offer a link to the
+release page instead.
 
 Build the portable Windows app:
 
