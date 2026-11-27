@@ -1853,7 +1853,7 @@ input[type='range']:disabled {
   display: flex;
   flex-direction: column;
   width: min(580px, 100%);
-  max-height: min(92vh, 780px);
+  max-height: min(96vh, 1040px);
   overflow: hidden;
   padding: 0;
   border-radius: 28px;
