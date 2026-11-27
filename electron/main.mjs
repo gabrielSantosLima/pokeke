@@ -222,6 +222,14 @@ function registerIpc() {
   });
   ipcMain.handle('room:lobby', () => rooms.getLobby());
 
+  ipcMain.handle('window:toggle-fullscreen', () => {
+    if (!window) return false;
+    const next = !window.isFullScreen();
+    window.setFullScreen(next);
+    return next;
+  });
+  ipcMain.handle('window:is-fullscreen', () => Boolean(window && window.isFullScreen()));
+
   ipcMain.handle('update:getState', () => updateState);
   ipcMain.handle('update:check', async () => {
     await runUpdateCheck();
@@ -270,6 +278,13 @@ async function createWindow() {
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+  const sendFullscreen = () => {
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('window:fullscreen', window.isFullScreen());
+    }
+  };
+  window.on('enter-full-screen', sendFullscreen);
+  window.on('leave-full-screen', sendFullscreen);
   window.on('closed', () => {
     window = null;
   });

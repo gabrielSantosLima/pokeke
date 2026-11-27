@@ -100,6 +100,7 @@ const els = {
   variantCarouselTitle: document.getElementById('variant-carousel-title'),
   variantDescription: document.getElementById('variant-description'),
   variantTutorialLink: document.getElementById('variant-tutorial-link'),
+  fullscreenBtn: document.getElementById('fullscreen-btn'),
   themeBtn: document.getElementById('theme-btn'),
   theme: document.getElementById('theme-overlay'),
   themeGrid: document.getElementById('theme-grid'),
@@ -159,6 +160,19 @@ function hideOverlays() {
   els.powerUse.classList.add('hidden');
   els.market.classList.add('hidden');
   els.draft.classList.add('hidden');
+}
+
+function prepareModalScrolling() {
+  document.querySelectorAll('.modal').forEach((modal) => {
+    if (modal.querySelector(':scope > .modal-scroll')) return;
+    const scroll = document.createElement('div');
+    scroll.className = 'modal-scroll';
+    for (const child of [...modal.children]) {
+      if (child.classList.contains('modal-close')) continue;
+      scroll.appendChild(child);
+    }
+    modal.appendChild(scroll);
+  });
 }
 
 function showError({ title = 'Algo deu errado', text, retry = null }) {
@@ -463,6 +477,55 @@ function initTheme() {
     applyTheme(button.dataset.theme);
     renderThemeGrid();
   });
+}
+
+function updateFullscreenButton(active) {
+  if (!els.fullscreenBtn) return;
+  els.fullscreenBtn.textContent = active ? '🗗' : '⛶';
+  els.fullscreenBtn.classList.toggle('is-fullscreen', Boolean(active));
+  els.fullscreenBtn.title = active ? 'Sair da tela cheia' : 'Entrar em tela cheia';
+  els.fullscreenBtn.setAttribute(
+    'aria-label',
+    active ? 'Sair da tela cheia' : 'Entrar em tela cheia',
+  );
+  els.fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+}
+
+async function toggleFullscreen() {
+  try {
+    if (desktop && typeof desktop.toggleFullscreen === 'function') {
+      const active = await desktop.toggleFullscreen();
+      updateFullscreenButton(active);
+      return;
+    }
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      updateFullscreenButton(false);
+    } else {
+      await document.documentElement.requestFullscreen();
+      updateFullscreenButton(true);
+    }
+  } catch (error) {
+    console.error(error);
+    showToast('Não foi possível alternar a tela cheia.');
+  }
+}
+
+function initFullscreen() {
+  updateFullscreenButton(Boolean(document.fullscreenElement));
+  els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', () => {
+    updateFullscreenButton(Boolean(document.fullscreenElement));
+  });
+  if (desktop && typeof desktop.isFullscreen === 'function') {
+    desktop
+      .isFullscreen()
+      .then((active) => updateFullscreenButton(Boolean(active)))
+      .catch((error) => console.error(error));
+  }
+  if (desktop && typeof desktop.onFullscreenChange === 'function') {
+    desktop.onFullscreenChange((active) => updateFullscreenButton(Boolean(active)));
+  }
 }
 
 function variantInfo(id) {
@@ -1927,7 +1990,9 @@ document.addEventListener('keydown', (event) => {
 
 // ---------------------------------------------------------------- startup
 
+prepareModalScrolling();
 initTheme();
+initFullscreen();
 initUpdates();
 refreshVariantNotes();
 setMode('solo');
